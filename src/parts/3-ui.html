@@ -6,6 +6,23 @@ const S = makeSim();
 for (let i = 0; i < 24*60/DT; i++) step(S);   // open on a plant that has already run a day
 S.alarms.length = 0;
 
+// operator setpoints and tuning survive a reload; everything else restarts with the model
+const KEY = 'mesa-tower-bas:v1', DEFAULTS = {satSp:55, dspSp:1, gains:{satP:.04, satI:.06, dspP:.3, dspI:.6}, sp:S.zones.map(() => 72)};
+const okNum = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= b;
+function applyCfg(c){
+  if (okNum(c.satSp, 50, 65)) S.satSp = c.satSp;
+  if (okNum(c.dspSp, .5, 2)) S.dspSp = c.dspSp;
+  const g = c.gains || {}, lim = {satP:1, satI:1, dspP:3, dspI:5};
+  for (const k in lim) if (okNum(g[k], 0, lim[k])) S.gains[k] = g[k];
+  if (Array.isArray(c.sp)) S.zones.forEach((z, i) => { if (okNum(c.sp[i], 66, 78)) z.sp = c.sp[i]; });
+}
+function saveCfg(){ try { localStorage.setItem(KEY, JSON.stringify({satSp:S.satSp, dspSp:S.dspSp, gains:S.gains, sp:S.zones.map(z => z.sp)})); } catch(e){} }
+try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && typeof c === 'object') applyCfg(c); } catch(e){}
+function syncInputs(){
+  $('i-satsp').value = S.satSp; $('i-dspsp').value = S.dspSp;
+  $('k-sat-p').value = S.gains.satP; $('k-sat-i').value = S.gains.satI; $('k-dsp-p').value = S.gains.dspP; $('k-dsp-i').value = S.gains.dspI;
+}
+
 const f1 = x => x.toFixed(1), pc = x => Math.round(x*100) + ' %', deg = x => f1(x) + ' °F';
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const clock = t => { const m = Math.floor(t); return DAYS[Math.floor(m/1440)%7] + ' ' + String(Math.floor(m/60)%24).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
@@ -55,8 +72,8 @@ const zel = S.zones.map((z, i) => {
   const th = document.createElement('div'); th.style.gridArea = 't'+z.id; $('thumb').appendChild(th);
   return {b, t:b.children[1], l:b.children[2], s:b.children[3], th};
 });
-$('zd-up').addEventListener('click', () => { const z = S.zones[sel]; z.sp = clamp(z.sp+.5, 66, 78); render(true); });
-$('zd-dn').addEventListener('click', () => { const z = S.zones[sel]; z.sp = clamp(z.sp-.5, 66, 78); render(true); });
+$('zd-up').addEventListener('click', () => { const z = S.zones[sel]; z.sp = clamp(z.sp+.5, 66, 78); saveCfg(); render(true); });
+$('zd-dn').addEventListener('click', () => { const z = S.zones[sel]; z.sp = clamp(z.sp-.5, 66, 78); saveCfg(); render(true); });
 
 function renderFloor(){
   S.zones.forEach((z, i) => {
@@ -211,7 +228,7 @@ function renderAHU(){
   set('i-oatv', deg(S.oat));
   set('th-avg', deg(S.zones.reduce((a, z) => a + z.T, 0)/S.zones.length) + ' avg');
 }
-const num = (id, fn) => $(id).addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)) fn(v); });
+const num = (id, fn) => $(id).addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)){ fn(v); saveCfg(); } });
 num('i-satsp', v => S.satSp = clamp(v, 50, 65));
 num('i-dspsp', v => S.dspSp = clamp(v, .5, 2));
 num('k-dsp-p', v => S.gains.dspP = clamp(v, 0, 3));
@@ -219,6 +236,8 @@ num('k-dsp-i', v => S.gains.dspI = clamp(v, 0, 5));
 num('k-sat-p', v => S.gains.satP = clamp(v, 0, 1));
 num('k-sat-i', v => S.gains.satI = clamp(v, 0, 1));
 num('i-oat', v => S.oatMan = v);
+syncInputs();
+$('i-reset').addEventListener('click', () => { applyCfg(JSON.parse(JSON.stringify(DEFAULTS))); try { localStorage.removeItem(KEY); } catch(e){} syncInputs(); render(true); });
 $('i-occ').addEventListener('change', e => S.occMode = e.target.value);
 $('i-oatauto').addEventListener('change', e => { S.oatAuto = e.target.checked; $('i-oat').disabled = S.oatAuto; if (!S.oatAuto){ S.oatMan = Math.round(S.oat); $('i-oat').value = S.oatMan; } });
 ['fan','chw','filter'].forEach(k => $('f-'+k).addEventListener('click', e => { S.faults[k] = !S.faults[k]; e.currentTarget.setAttribute('aria-pressed', S.faults[k]); }));
@@ -309,7 +328,7 @@ function renderAlarms(){
   const sig = S.alarms.map(a => a.id+':'+a.active+':'+a.acked).join('|');
   if (sig === almSig) return; almSig = sig;
   $('alm-empty').hidden = S.alarms.length > 0;
-  $('alm').innerHTML = S.alarms.map(a => '<tr><td class="num" style="text-align:left;white-space:nowrap">'+clock(a.t)+'</td><td class="num" style="text-align:left">'+a.src+'</td><td>'+a.msg+'</td>' +
+  $('alm').innerHTML = S.alarms.map(a => '<tr><td class="num" style="text-align:left;white-space:nowrap">'+clock(a.t)+'</td><td class="num" style="text-align:left;white-space:nowrap">'+a.src+'</td><td>'+a.msg+'</td>' +
     '<td><span class="sev '+a.sev+'">'+(a.sev === 'crit' ? 'Critical' : 'Maintenance')+'</span></td>' +
     '<td>'+(a.active ? '<span class="sev '+a.sev+'">In alarm</span>' : '<span class="sev ok">Normal '+clock(a.rtn).slice(4)+'</span>')+'</td>' +
     '<td>'+(a.acked ? 'Acknowledged' : '<button type="button" class="ack" data-id="'+a.id+'">Acknowledge</button>')+'</td></tr>').join('');

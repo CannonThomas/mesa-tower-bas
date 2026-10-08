@@ -1,0 +1,9 @@
+{
+  "name": "mesa-tower-bas",
+  "private": true,
+  "description": "Building automation front end with a simulated VAV air handler",
+  "scripts": {
+    "build": "sh build.sh",
+    "test": "node --test"
+  }
+}

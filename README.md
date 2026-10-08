@@ -22,6 +22,25 @@ Open `index.html` in a browser. There is no build step and no dependencies.
 - **Economizer**: enabled when outside air is below 65 °F and at least 2 °F below return air, with 2 °F hysteresis. Otherwise the damper holds 20 % minimum outside air.
 - **VAV zones**: each box runs a cooling PI loop on its damper (25 % minimum flow) and a heating PI loop on its reheat valve, around a ±1 °F deadband. Unoccupied limits are 82 / 62 °F.
 
+## Development
+
+- `sh build.sh` assembles `src/page.html` and `index.html` from `src/parts/`. Edit the parts, not the built files.
+- `npm test` runs the plant and controller model headless (Node 20 or newer, no dependencies) and checks the sequence of operations: setpoint control, the economizer, night setback, and each fault.
+- CI runs the tests and fails if the built pages are out of date.
+
+Operator setpoints, PID gains and zone setpoints are saved in the browser's local storage. Everything else restarts with the model on reload.
+
+## What this is not
+
+This is a simulator. Nothing in it talks to real equipment. To put this front end on a real building you would need, at minimum:
+
+- a data layer that reads and writes points over BACnet/IP or a vendor gateway, in place of the model;
+- user accounts, permissions and an audit trail for every setpoint change and override;
+- a server-side historian for trends and alarms, with alarm routing;
+- graphics and point lists generated per site rather than hard-coded.
+
+The UI reads one state object (`S`, created by `makeSim()` in `src/parts/2-sim.html`) and the model advances it with `step(S)`. Replacing `step` with a poller that fills the same fields is the seam for live data.
+
 ## Layout
 
 - `index.html` is the standalone page.
