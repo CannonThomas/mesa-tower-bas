@@ -128,17 +128,17 @@ function airColor(t){ const k = clamp((t-52)/36, 0, 1), m = (a, b) => Math.round
 const run = () => S.speed > .05;
 const LABELS = [
   {t:'Exhaust Damper', x:10,  y:6, a:[168,150], rows:[['Position', () => pc(S.oa)]]},
-  {t:'Mixing Damper',  x:140, y:6, a:[236,216], rows:[['Position', () => pc(S.fanCmd ? 1-S.oa : 0)]]},
-  {t:'Economizer',     x:270, y:6, rows:[['Mode', () => S.econ ? 'Enabled' : 'Disabled'], ['Min OA', () => pc(S.minOA)]]},
+  {t:'Return Damper',  x:140, y:6, a:[236,216], rows:[['Position', () => pc(1-S.oa)]]},
+  {t:'Economizer',     x:270, y:6, rows:[['Mode', () => S.econ ? 'Enabled' : 'Disabled'], ['Min OA', () => pc(S.occ ? S.minOA : 0)]]},
   {t:'Return Fan',     x:560, y:6, a:[640,128], rows:[['Status', () => run() ? 'On' : 'Off'], ['Speed', () => pc(S.speed)]]},
   {t:'Return Air',     x:830, y:6, a:[900,140], rows:[['Temp', () => deg(S.rat)]]},
   {t:'Outside Air',    x:10,  y:432, a:[96,330],  rows:[['Temp', () => deg(S.oat)], ['Damper', () => pc(S.oa)]]},
   {t:'Mixed Air',      x:140, y:432, a:[236,350], rows:[['Temp', () => deg(S.mat)]]},
-  {t:'Filter',         x:270, y:432, a:[309,374], rows:[['DP', () => S.fdp.toFixed(2)+' in'], ['Status', () => S.fdp > .8 ? 'Dirty' : 'Clean']]},
-  {t:'Heating Coil',   x:400, y:432, a:[438,416], rows:[['HW valve', () => pc(S.htg)]]},
-  {t:'Cooling Coil',   x:530, y:432, a:[508,416], rows:[['CHW valve', () => pc(S.clg)]]},
+  {t:'Filter',         x:270, y:432, a:[309,374], rows:[['DP', () => S.fdp.toFixed(2)+' in wc'], ['Status', () => S.fdp > .8 ? 'Dirty' : 'Clean']]},
+  {t:'Heating Coil',   x:400, y:432, a:[444,416], rows:[['HW valve', () => pc(S.htg)]]},
+  {t:'Cooling Coil',   x:530, y:432, a:[514,416], rows:[['CHW valve', () => pc(S.clg)]]},
   {t:'Supply Fan',     x:660, y:432, a:[660,348], rows:[['Status', () => run() ? 'On' : S.fanCmd ? 'FAULT' : 'Off'], ['Speed', () => pc(S.speed)]]},
-  {t:'Supply Air',     x:800, y:432, a:[890,330], rows:[['Temp', () => deg(S.sat)], ['Setpoint', () => deg(S.satSp)], ['Static', () => S.dsp.toFixed(2)+' in']]},
+  {t:'Supply Air',     x:800, y:432, a:[890,330], rows:[['Temp', () => deg(S.sat)], ['Setpoint', () => deg(S.satSp)], ['Static', () => S.dsp.toFixed(2)+' in wc']]},
 ];
 LABELS.forEach(L => {
   const g = $('labels'), W = 120, H = 22 + 14*L.rows.length;
@@ -151,7 +151,8 @@ LABELS.forEach(L => {
 
 function mode(){
   if (!S.fanCmd) return ['Unoccupied, unit off', ''];
-  if (S.faults.fan) return ['Supply fan fault', 'alm'];
+  if (S.faults.fan) return [S.proven ? 'Supply fan fault' : 'Shutdown, no fan status', 'alm'];
+  if (!S.occ) return ['Night setback', 'on'];
   if (S.htg > .02) return ['Heating', 'on'];
   if (S.econ) return [S.clg > .02 ? 'Economizer + chilled water' : 'Economizer, free cooling', 'on'];
   return [S.clg > .02 ? 'Mechanical cooling' : 'Ventilation', 'on'];
@@ -167,6 +168,8 @@ const POINTS = [
   ['AHU1.RA-T','Return air temperature','AI', () => deg(S.rat)],
   ['AHU1.OA-T','Outside air temperature','AI', () => deg(S.oat)],
   ['AHU1.OA-D','Outside air damper','AO', () => pc(S.oa)],
+  ['AHU1.RA-D','Return air damper','AO', () => pc(1-S.oa)],
+  ['AHU1.EA-D','Exhaust air damper','AO', () => pc(S.oa)],
   ['AHU1.CHW-V','Chilled water valve','AO', () => pc(S.clg)],
   ['AHU1.HW-V','Hot water valve','AO', () => pc(S.htg)],
   ['AHU1.FLT-DP','Filter differential pressure','AI', () => S.fdp.toFixed(2)+' in. w.c.'],
@@ -199,7 +202,7 @@ function renderAHU(){
   $('a-mode').className = 'pill ' + cls; if (cache.mode !== m){ cache.mode = m; $('a-mode').lastElementChild.textContent = m; }
   set('a-cfm', Math.round(S.flowFrac*9600).toLocaleString()+' cfm');
   LABELS.forEach(L => L.rows.forEach((r, i) => { const v = r[1](); if (L.last[i] !== v){ L.last[i] = v; L.els[i].textContent = v; } }));
-  setOA(S.oa); setEA(S.oa); setRA(S.fanCmd ? 1-S.oa : 0);
+  setOA(S.oa); setEA(S.oa); setRA(1-S.oa);
   hwc.glow.setAttribute('opacity', (S.htg*.45).toFixed(2));
   chwc.glow.setAttribute('opacity', ((S.faults.chw ? 0 : S.clg)*.45).toFixed(2));
   filt.face.setAttribute('fill', S.fdp > .8 ? '#8a6a2a' : 'url(#gFilt)');
@@ -224,7 +227,8 @@ $('i-oatauto').addEventListener('change', e => { S.oatAuto = e.target.checked; $
 const bar = (id, v) => { $(id).style.width = Math.round(clamp(v,0,1)*100) + '%'; };
 function renderLogic(){
   const tf = b => b ? 'TRUE' : 'FALSE';
-  set('l-occm', S.occMode === 'auto' ? 'Auto' : 'Override'); set('l-w-occ', S.occ ? 'OCC' : 'UNOCC');
+  set('l-occm', S.occMode === 'auto' ? 'Auto' : 'Override'); set('l-w-occ', S.occ ? 'OCC' : S.setback ? 'SETBACK' : 'UNOCC'); set('l-nsb', S.setback ? 'Running' : 'Idle');
+  set('l-pf', S.proven ? 'Proven' : S.fanCmd ? 'LOCKED OUT' : 'Off');
   set('l-sfc', S.fanCmd ? 'On' : 'Off'); set('l-w-sfc', S.fanCmd ? 'start' : 'stop');
   set('l-sfs', run() ? 'Running' : 'Stopped'); set('l-w-sfs', tf(run()));
   set('l-sfa', S.alarms.some(a => a.key==='sf' && a.active) ? 'ALARM' : 'Normal');

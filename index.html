@@ -320,8 +320,8 @@ canvas{display:block;width:100%;height:190px;touch-action:pan-y}
 
             <!-- coil piping and valves -->
             <g stroke-linecap="round">
-              <path d="M438 379V416" stroke="#b9573f" stroke-width="6"/><polygon points="428,392 448,404 448,392 428,404" fill="#d9e0e6" stroke="#20262b"/><rect x="431" y="382" width="14" height="9" fill="#2c343b" stroke="#6f7c87"/>
-              <path d="M508 379V416" stroke="#4a88c4" stroke-width="6"/><polygon points="498,392 518,404 518,392 498,404" fill="#d9e0e6" stroke="#20262b"/><rect x="501" y="382" width="14" height="9" fill="#2c343b" stroke="#6f7c87"/>
+              <path d="M433 379V416" stroke="#d0603f" stroke-width="5"/><path d="M444 379V416" stroke="#8f4230" stroke-width="5"/><polygon points="436,393 452,405 452,393 436,405" fill="#d9e0e6" stroke="#20262b"/><rect x="438" y="383" width="12" height="9" fill="#2c343b" stroke="#6f7c87"/>
+              <path d="M503 379V416" stroke="#3f8fd8" stroke-width="5"/><path d="M514 379V416" stroke="#7fb4e6" stroke-width="5"/><polygon points="506,393 522,405 522,393 506,405" fill="#d9e0e6" stroke="#20262b"/><rect x="508" y="383" width="12" height="9" fill="#2c343b" stroke="#6f7c87"/>
             </g>
 
             <g id="labels"></g>
@@ -368,13 +368,13 @@ canvas{display:block;width:100%;height:190px;touch-action:pan-y}
         <div class="panel logic">
           <h2>Fan start / stop</h2>
           <div class="prog">
-            <div class="mb"><header>Schedule</header><div class="b"><span>Window</span><span>06:00–18:00</span><span>Mode</span><span id="l-occm">–</span></div></div>
+            <div class="mb"><header>Schedule</header><div class="b"><span>Window</span><span>06:00–18:00</span><span>Mode</span><span id="l-occm">–</span><span>Night setback</span><span id="l-nsb">–</span></div></div>
             <div class="wire" id="l-w-occ">–</div>
             <div class="mb"><header>BO · SF-C</header><div class="b"><span>Command</span><span id="l-sfc">–</span></div></div>
             <div class="wire" id="l-w-sfc">–</div>
             <div class="mb"><header>BI · SF-S</header><div class="b"><span>Status</span><span id="l-sfs">–</span></div></div>
             <div class="wire" id="l-w-sfs">–</div>
-            <div class="mb"><header>Alarm</header><div class="b"><span>Cmd ≠ status</span><span>60 s</span><span>State</span><span id="l-sfa">–</span></div></div>
+            <div class="mb"><header>Alarm</header><div class="b"><span>Cmd ≠ status</span><span>60 s</span><span>State</span><span id="l-sfa">–</span><span>Temp control</span><span id="l-pf">–</span></div></div>
           </div>
         </div>
         <div class="panel logic">
@@ -461,7 +461,7 @@ function makeSim(){
     t: 10.5*60, oatAuto:true, oatMan:70, oat:70, occMode:'auto', occ:false,
     satSp:55, dspSp:1.0, minOA:.2, gains:{satP:.04, satI:.06, dspP:.3, dspI:.6},
     sat:68, mat:72, rat:72, dsp:0, speed:0, sfOut:0, sfI:0, u:0, satI:0, satErr:0, dspErr:0,
-    clg:0, htg:0, oa:0, econ:false, fanCmd:false, fdp:0, flowFrac:0,
+    clg:0, htg:0, oa:0, econ:false, fanCmd:false, setback:false, proven:false, fdp:0, flowFrac:0,
     faults:{fan:false, chw:false, filter:false},
     zones: ZDEF.map(d => ({...d, T:72.5, sp:72, cI:0, hI:0, dmp:0, rh:0, flow:0})),
     alarms:[], aid:0, tm:{}, log:[], lastLog:-1e9
@@ -485,8 +485,15 @@ function step(S){
   const h = (S.t/60) % 24, G = S.gains;
   S.oat = S.oatAuto ? weather(S.t) : S.oatMan;
   S.occ = S.occMode==='auto' ? (h>=6 && h<18) : S.occMode==='occ';
-  S.fanCmd = S.occ;
+  // night setback: cycle the unit when any zone drifts past the unoccupied limits
+  if (S.occ) S.setback = false;
+  else if (S.setback){ if (S.zones.every(z => z.T > UNOCC_H+2 && z.T < UNOCC_C-2)) S.setback = false; }
+  else if (S.zones.some(z => z.T < UNOCC_H || z.T > UNOCC_C)) S.setback = true;
+  S.fanCmd = S.occ || S.setback;
   const run = S.fanCmd && !S.faults.fan;
+  // proof of airflow: temperature control and dampers are released only while fan status is proven
+  S.proven = S.fanCmd && !S.alarms.some(a => a.key==='sf' && a.active);
+  const minOA = S.occ ? S.minOA : 0;       // no ventilation air on a setback cycle
 
   // duct static loop -> fan VFD
   if (S.fanCmd){
@@ -502,14 +509,15 @@ function step(S){
   // zones
   let wsum = 0, tsum = 0, fsum = 0, csum = 0;
   for (const z of S.zones){
-    const [csp, hsp] = zoneSps(z, S.occ);
+    const [csp, hsp] = S.occ ? [z.sp+1, z.sp-1] : S.setback ? [UNOCC_C-3, UNOCC_H+3] : [UNOCC_C, UNOCC_H];
     const ce = z.T - csp, he = hsp - z.T;
     z.cI = clamp(z.cI + .04*ce*DT, 0, 1);
     z.hI = clamp(z.hI + .04*he*DT, 0, 1);
     const c = clamp(.35*ce + z.cI, 0, 1);
-    z.rh = S.occ ? clamp(.35*he + z.hI, 0, 1) : 0;
-    z.dmp = S.occ ? MIN_FLOW + (1-MIN_FLOW)*c : 0;
+    z.rh = S.fanCmd ? clamp(.35*he + z.hI, 0, 1) : 0;
+    z.dmp = S.fanCmd ? MIN_FLOW + (1-MIN_FLOW)*c : 0;
     z.flow = z.dmp * Math.min(1.25, Math.sqrt(Math.max(S.dsp,0)/1.0));
+    if (z.flow < .05) z.rh = 0;               // reheat locked out without airflow
     let q = z.base;
     if (S.occ){ q += z.load; if (z.meet && ((h>=9&&h<10.5)||(h>=13&&h<15))) q += z.meet; }
     z.T += (q + z.env*(S.oat - z.T) + .03*z.flow*(S.sat - z.T) + (z.flow>.05 ? .35*z.rh : 0)) * DT;
@@ -524,14 +532,15 @@ function step(S){
   else if (S.oat < 65 && S.oat < S.rat-2){ S.econ = true; if (S.clg > 0) S.satI += 1; }
 
   // supply air temp sequence: heat | economizer | chilled water
-  if (S.fanCmd){
-    const uMax = S.econ ? 2 : 1;
+  if (S.proven){
+    // a setback heating cycle locks out the economizer and chilled water
+    const uMax = (!S.occ && !S.zones.some(z => z.T > UNOCC_C-3)) ? 0 : S.econ ? 2 : 1;
     S.satErr = S.sat - S.satSp;
     S.satI = clamp(S.satI + G.satI*S.satErr*DT, -1, uMax);
     S.u = clamp(G.satP*S.satErr + S.satI, -1, uMax);
     S.htg = clamp(-S.u, 0, 1);
-    if (S.econ){ S.oa = S.minOA + (1-S.minOA)*clamp(S.u,0,1); S.clg = clamp(S.u-1, 0, 1); }
-    else { S.oa = S.minOA; S.clg = clamp(S.u, 0, 1); }
+    if (S.econ){ S.oa = minOA + (1-minOA)*clamp(S.u,0,1); S.clg = clamp(S.u-1, 0, 1); }
+    else { S.oa = minOA; S.clg = clamp(S.u, 0, 1); }
   } else { S.satErr = 0; S.satI = 0; S.u = 0; S.htg = 0; S.clg = 0; S.oa = 0; }
   S.mat = S.oa*S.oat + (1-S.oa)*S.rat;
   if (run && S.speed > .05){
@@ -687,17 +696,17 @@ function airColor(t){ const k = clamp((t-52)/36, 0, 1), m = (a, b) => Math.round
 const run = () => S.speed > .05;
 const LABELS = [
   {t:'Exhaust Damper', x:10,  y:6, a:[168,150], rows:[['Position', () => pc(S.oa)]]},
-  {t:'Mixing Damper',  x:140, y:6, a:[236,216], rows:[['Position', () => pc(S.fanCmd ? 1-S.oa : 0)]]},
-  {t:'Economizer',     x:270, y:6, rows:[['Mode', () => S.econ ? 'Enabled' : 'Disabled'], ['Min OA', () => pc(S.minOA)]]},
+  {t:'Return Damper',  x:140, y:6, a:[236,216], rows:[['Position', () => pc(1-S.oa)]]},
+  {t:'Economizer',     x:270, y:6, rows:[['Mode', () => S.econ ? 'Enabled' : 'Disabled'], ['Min OA', () => pc(S.occ ? S.minOA : 0)]]},
   {t:'Return Fan',     x:560, y:6, a:[640,128], rows:[['Status', () => run() ? 'On' : 'Off'], ['Speed', () => pc(S.speed)]]},
   {t:'Return Air',     x:830, y:6, a:[900,140], rows:[['Temp', () => deg(S.rat)]]},
   {t:'Outside Air',    x:10,  y:432, a:[96,330],  rows:[['Temp', () => deg(S.oat)], ['Damper', () => pc(S.oa)]]},
   {t:'Mixed Air',      x:140, y:432, a:[236,350], rows:[['Temp', () => deg(S.mat)]]},
-  {t:'Filter',         x:270, y:432, a:[309,374], rows:[['DP', () => S.fdp.toFixed(2)+' in'], ['Status', () => S.fdp > .8 ? 'Dirty' : 'Clean']]},
-  {t:'Heating Coil',   x:400, y:432, a:[438,416], rows:[['HW valve', () => pc(S.htg)]]},
-  {t:'Cooling Coil',   x:530, y:432, a:[508,416], rows:[['CHW valve', () => pc(S.clg)]]},
+  {t:'Filter',         x:270, y:432, a:[309,374], rows:[['DP', () => S.fdp.toFixed(2)+' in wc'], ['Status', () => S.fdp > .8 ? 'Dirty' : 'Clean']]},
+  {t:'Heating Coil',   x:400, y:432, a:[444,416], rows:[['HW valve', () => pc(S.htg)]]},
+  {t:'Cooling Coil',   x:530, y:432, a:[514,416], rows:[['CHW valve', () => pc(S.clg)]]},
   {t:'Supply Fan',     x:660, y:432, a:[660,348], rows:[['Status', () => run() ? 'On' : S.fanCmd ? 'FAULT' : 'Off'], ['Speed', () => pc(S.speed)]]},
-  {t:'Supply Air',     x:800, y:432, a:[890,330], rows:[['Temp', () => deg(S.sat)], ['Setpoint', () => deg(S.satSp)], ['Static', () => S.dsp.toFixed(2)+' in']]},
+  {t:'Supply Air',     x:800, y:432, a:[890,330], rows:[['Temp', () => deg(S.sat)], ['Setpoint', () => deg(S.satSp)], ['Static', () => S.dsp.toFixed(2)+' in wc']]},
 ];
 LABELS.forEach(L => {
   const g = $('labels'), W = 120, H = 22 + 14*L.rows.length;
@@ -710,7 +719,8 @@ LABELS.forEach(L => {
 
 function mode(){
   if (!S.fanCmd) return ['Unoccupied, unit off', ''];
-  if (S.faults.fan) return ['Supply fan fault', 'alm'];
+  if (S.faults.fan) return [S.proven ? 'Supply fan fault' : 'Shutdown, no fan status', 'alm'];
+  if (!S.occ) return ['Night setback', 'on'];
   if (S.htg > .02) return ['Heating', 'on'];
   if (S.econ) return [S.clg > .02 ? 'Economizer + chilled water' : 'Economizer, free cooling', 'on'];
   return [S.clg > .02 ? 'Mechanical cooling' : 'Ventilation', 'on'];
@@ -726,6 +736,8 @@ const POINTS = [
   ['AHU1.RA-T','Return air temperature','AI', () => deg(S.rat)],
   ['AHU1.OA-T','Outside air temperature','AI', () => deg(S.oat)],
   ['AHU1.OA-D','Outside air damper','AO', () => pc(S.oa)],
+  ['AHU1.RA-D','Return air damper','AO', () => pc(1-S.oa)],
+  ['AHU1.EA-D','Exhaust air damper','AO', () => pc(S.oa)],
   ['AHU1.CHW-V','Chilled water valve','AO', () => pc(S.clg)],
   ['AHU1.HW-V','Hot water valve','AO', () => pc(S.htg)],
   ['AHU1.FLT-DP','Filter differential pressure','AI', () => S.fdp.toFixed(2)+' in. w.c.'],
@@ -758,7 +770,7 @@ function renderAHU(){
   $('a-mode').className = 'pill ' + cls; if (cache.mode !== m){ cache.mode = m; $('a-mode').lastElementChild.textContent = m; }
   set('a-cfm', Math.round(S.flowFrac*9600).toLocaleString()+' cfm');
   LABELS.forEach(L => L.rows.forEach((r, i) => { const v = r[1](); if (L.last[i] !== v){ L.last[i] = v; L.els[i].textContent = v; } }));
-  setOA(S.oa); setEA(S.oa); setRA(S.fanCmd ? 1-S.oa : 0);
+  setOA(S.oa); setEA(S.oa); setRA(1-S.oa);
   hwc.glow.setAttribute('opacity', (S.htg*.45).toFixed(2));
   chwc.glow.setAttribute('opacity', ((S.faults.chw ? 0 : S.clg)*.45).toFixed(2));
   filt.face.setAttribute('fill', S.fdp > .8 ? '#8a6a2a' : 'url(#gFilt)');
@@ -783,7 +795,8 @@ $('i-oatauto').addEventListener('change', e => { S.oatAuto = e.target.checked; $
 const bar = (id, v) => { $(id).style.width = Math.round(clamp(v,0,1)*100) + '%'; };
 function renderLogic(){
   const tf = b => b ? 'TRUE' : 'FALSE';
-  set('l-occm', S.occMode === 'auto' ? 'Auto' : 'Override'); set('l-w-occ', S.occ ? 'OCC' : 'UNOCC');
+  set('l-occm', S.occMode === 'auto' ? 'Auto' : 'Override'); set('l-w-occ', S.occ ? 'OCC' : S.setback ? 'SETBACK' : 'UNOCC'); set('l-nsb', S.setback ? 'Running' : 'Idle');
+  set('l-pf', S.proven ? 'Proven' : S.fanCmd ? 'LOCKED OUT' : 'Off');
   set('l-sfc', S.fanCmd ? 'On' : 'Off'); set('l-w-sfc', S.fanCmd ? 'start' : 'stop');
   set('l-sfs', run() ? 'Running' : 'Stopped'); set('l-w-sfs', tf(run()));
   set('l-sfa', S.alarms.some(a => a.key==='sf' && a.active) ? 'ALARM' : 'Normal');

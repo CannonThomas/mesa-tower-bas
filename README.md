@@ -15,10 +15,12 @@ Open `index.html` in a browser. There is no build step and no dependencies.
 ## Sequence of operations
 
 - **Occupancy**: schedule 06:00 to 18:00, with operator override.
+- **Night setback**: when unoccupied, the unit cycles on if any zone passes 82 °F or 62 °F and runs until every zone is 2 °F back inside those limits. On a setback heating cycle the outside air damper stays shut and cooling is locked out.
+- **Proof of airflow**: if the fan is commanded on with no run status for 60 s, the valves close, the outside air damper shuts and the return damper opens. VAV reheat is locked out without airflow.
 - **Supply fan**: starts on occupancy. A PI loop modulates the VFD to hold duct static pressure (default 1.0 in. w.c.).
 - **Supply air temperature**: one PI loop drives a sequencer. Hot water valve, then outside air damper (economizer), then chilled water valve, to hold 55 °F.
 - **Economizer**: enabled when outside air is below 65 °F and at least 2 °F below return air, with 2 °F hysteresis. Otherwise the damper holds 20 % minimum outside air.
-- **VAV zones**: each box runs a cooling PI loop on its damper (25 % minimum flow) and a heating PI loop on its reheat valve, around a ±1 °F deadband. Unoccupied setbacks are 82 / 62 °F.
+- **VAV zones**: each box runs a cooling PI loop on its damper (25 % minimum flow) and a heating PI loop on its reheat valve, around a ±1 °F deadband. Unoccupied limits are 82 / 62 °F.
 
 ## Layout
 
