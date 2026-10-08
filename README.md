@@ -23,6 +23,6 @@ Open `index.html` in a browser. There is no build step and no dependencies.
 ## Layout
 
 - `index.html` is the standalone page.
-- `src/page.html` is the same page without the document wrapper. The plant and controller model is the `<script id="sim">` block and has no DOM dependencies.
+- `src/page.html` is the same page without the document wrapper, assembled from `src/parts/` (markup and styles, plant model, UI). The plant and controller model has no DOM dependencies.
 
 The plant model is a simplified lumped-parameter simulation for demonstration. It is not a design tool.
