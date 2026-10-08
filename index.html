@@ -4,135 +4,153 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mesa Tower BAS</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jura:wght@500;600;700&family=Roboto:wght@400;500&family=Roboto+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: operator workstation. Status bar on top, view tabs, then one dense working view at a time.
-   Zone color is the loudest thing on the page; everything else stays steel-neutral. */
+/* Layout: operator workstation, one dark world. Brand bar, view tabs, equipment tree on the left,
+   equipment graphic on a black canvas. Live values are the only yellow on the page. */
 :root{
-  --bg:#e7ebee; --panel:#fbfcfc; --panel-2:#f0f3f5; --line:#cdd5da; --ink:#111a20; --ink-2:#44525b; --muted:#75838c;
-  --accent:#0b6e8f; --accent-ink:#ffffff; --duct:#dde4e8; --duct-line:#6c7b85; --band:#eef1f3;
-  --good:#0ca30c; --warn:#b97a00; --crit:#d03b3b; --hot:#e0703a; --cold:#2a78d6;
-  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  color-scheme:dark;
+  --bg:#07090b; --chrome:#11161b; --panel:#14191e; --panel-2:#1b2228; --line:#2a343d; --ink:#eef2f5; --ink-2:#b4bfc8; --muted:#7d8a94;
+  --brand:#165194; --accent:#4c97e8; --accent-ink:#ffffff; --val:#f4d35e; --canvas:#040506; --band:#10151a;
+  --good:#22b53a; --warn:#fab219; --crit:#e66767; --hot:#e0623f; --cold:#3f8fd8;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
   --z-3:#5f86e6; --z-2:#8cb0f2; --z-1:#b9d3f7; --z0:#7fcf86; --z1:#f2df6b; --z2:#f5a955; --z3:#ee6a5f; --zu:#aab3b9; --z-ink:#0c1418;
-  --f-ui:"Barlow","Segoe UI",system-ui,sans-serif;
-  --f-label:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --f-ui:"Roboto","Segoe UI",system-ui,sans-serif;
+  --f-label:"Jura","Segoe UI",system-ui,sans-serif;
+  --f-data:"Roboto Mono",ui-monospace,Menlo,Consolas,monospace;
 }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0d1113; --panel:#161a1d; --panel-2:#1d2327; --line:#2d363c; --ink:#f1f4f5; --ink-2:#b8c3c9; --muted:#83919a;
-  --accent:#4fb3d4; --accent-ink:#06222c; --duct:#232b30; --duct-line:#8696a0; --band:#1b2024;
-  --good:#0ca30c; --warn:#fab219; --crit:#e66767; --hot:#ec835a; --cold:#6da7ec;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
-  color-scheme:dark } }
-:root[data-theme="dark"]{
-  --bg:#0d1113; --panel:#161a1d; --panel-2:#1d2327; --line:#2d363c; --ink:#f1f4f5; --ink-2:#b8c3c9; --muted:#83919a;
-  --accent:#4fb3d4; --accent-ink:#06222c; --duct:#232b30; --duct-line:#8696a0; --band:#1b2024;
-  --good:#0ca30c; --warn:#fab219; --crit:#e66767; --hot:#ec835a; --cold:#6da7ec;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
-  color-scheme:dark }
-
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-ui);padding-inline:16px;padding-block:14px 40px}
-.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
-.lbl{font:600 11px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lbl{font:700 11px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 
-/* status bar */
-.bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:10px 14px}
-.bar h1{font:600 20px/1.1 var(--f-label);margin:0;letter-spacing:.01em}
-.bar .sub{color:var(--ink-2);font-size:12px}
+/* brand bar */
+.bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;background:linear-gradient(#1d2a3a,#101820);border:1px solid var(--line);border-bottom:2px solid var(--brand);padding:10px 16px}
+.bar h1{font:700 21px/1 var(--f-label);margin:0;letter-spacing:.16em;text-transform:uppercase}
+.bar .sub{font:600 10.5px/1 var(--f-label);letter-spacing:.24em;text-transform:uppercase;color:var(--accent);margin-top:5px}
 .stat{display:flex;flex-direction:column;gap:2px;min-width:0}
-.stat .num{font-size:15px}
+.stat .num{font-size:15px;color:var(--val)}
 .spacer{flex:1 1 0}
-.pill{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border:1px solid var(--line);background:var(--panel-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;font:700 11.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;padding:6px 9px;border:1px solid var(--line);background:rgba(0,0,0,.35);border-radius:3px}
 .pill i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
-.pill.on i{background:var(--good)} .pill.alm i{background:var(--crit)} .pill.alm{border-color:var(--crit)}
-.seg{display:inline-flex;border:1px solid var(--line)}
-.seg button{background:var(--panel);border:0;border-right:1px solid var(--line);padding:5px 9px;font:500 12px var(--f-data)}
+.pill.on i{background:var(--good);box-shadow:0 0 6px var(--good)} .pill.alm i{background:var(--crit);box-shadow:0 0 6px var(--crit)} .pill.alm{border-color:var(--crit)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{background:rgba(0,0,0,.35);border:0;border-right:1px solid var(--line);padding:6px 9px;font:500 12px var(--f-data)}
 .seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
 
 /* tabs */
-.tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:2px solid var(--line)}
-.tabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;padding:8px 14px;font:600 14px var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-.tabs .cnt{font:500 11px var(--f-data);background:var(--crit);color:#fff;padding:1px 5px;margin-left:5px}
+.tabs{display:flex;flex-wrap:wrap;background:var(--chrome);border:1px solid var(--line);border-top:0}
+.tabs button{background:none;border:0;border-right:1px solid var(--line);border-bottom:3px solid transparent;padding:9px 18px 7px;font:700 13px var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.tabs button[aria-selected="true"]{color:#fff;background:linear-gradient(#1b3a61,#12233a);border-bottom-color:var(--accent)}
+.tabs .cnt{font:500 11px var(--f-data);background:var(--crit);color:#16090a;padding:1px 5px;margin-left:6px;border-radius:2px}
+
+.body{display:grid;grid-template-columns:200px minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+.tree{background:var(--panel);border:1px solid var(--line);padding:10px 0;min-width:0}
+.tree .lbl{padding:0 12px 8px}
+.tree ul{list-style:none;margin:0;padding:0}
+.tree button,.tree .root{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;padding:6px 12px;font-size:13px;white-space:nowrap}
+.tree .root{font:700 12px var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.tree .l1{padding-left:22px} .tree .l2{padding-left:36px}
+.tree button:hover{background:var(--panel-2)}
+.tree button[aria-current="true"]{background:var(--brand);color:#fff}
+.tree i{width:9px;height:9px;border-radius:2px;background:var(--muted);flex:none}
+@media (max-width:900px){
+  .body{grid-template-columns:minmax(0,1fr)}
+  .tree{padding:6px}
+  .tree .lbl,.tree .root{display:none}
+  .tree ul{display:flex;overflow-x:auto;gap:4px}
+  .tree button{padding:6px 10px;border:1px solid var(--line)}
+}
 
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px;min-width:0}
-.panel h2{font:600 15px/1.2 var(--f-label);letter-spacing:.04em;text-transform:uppercase;margin:0 0 10px}
+.panel h2,.gfx h2{font:700 14px/1.2 var(--f-label);letter-spacing:.1em;text-transform:uppercase;margin:0 0 10px}
 .note{color:var(--ink-2);font-size:13px;max-width:68ch;margin:0}
 .split{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-items:start}
-@media (max-width:860px){.split{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1040px){.split{grid-template-columns:minmax(0,1fr)}}
 .stack{display:flex;flex-direction:column;gap:12px;min-width:0}
 
+/* graphic canvas */
+.gfx{background:radial-gradient(ellipse at 50% 40%,#161c22 0%,#07090b 62%,#040506 100%);border:1px solid var(--line);padding:14px;min-width:0}
+.gfx-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.gfx-head h2{margin:0;font-size:16px;color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips .num{color:var(--val)}
+.gscroll{overflow-x:auto}
+.gscroll svg{display:block;width:100%;min-width:820px;height:auto}
+
 /* floor plan */
-.plan{display:grid;gap:4px;background:var(--duct-line);border:3px solid var(--duct-line);
+.plan{display:grid;gap:5px;background:#3d4852;border:4px solid #3d4852;box-shadow:0 10px 30px rgba(0,0,0,.6);
   grid-template-columns:repeat(4,minmax(0,1fr));
   grid-template-areas:"z102 z102 z103 z105" "cor cor cor cor" "z101 z104 z104 z106"}
 @media (max-width:620px){.plan{grid-template-columns:repeat(2,minmax(0,1fr));
   grid-template-areas:"z102 z102" "z103 z105" "cor cor" "z101 z106" "z104 z104"}}
-.zone{border:0;text-align:left;padding:10px 12px;min-height:128px;display:flex;flex-direction:column;gap:2px;color:var(--z-ink);background:var(--zu);transition:background-color .6s;min-width:0}
-.zone[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:-3px}
-.zone .zn{font:600 12px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.zone{border:0;text-align:left;padding:10px 12px;min-height:132px;display:flex;flex-direction:column;gap:2px;color:var(--z-ink);background:var(--zu);transition:background-color .6s;min-width:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),inset 0 -30px 40px -30px rgba(0,0,0,.25)}
+.zone[aria-pressed="true"]{outline:3px solid #fff;outline-offset:-3px}
+.zone .zn{font:700 11.5px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase}
 .zone .zt{font:500 26px/1.1 var(--f-data);margin-top:auto}
 .zone .zs{font:400 11.5px/1.3 var(--f-data)}
-.zone .zl{font:600 12px var(--f-label);letter-spacing:.05em;text-transform:uppercase}
-.cor{grid-area:cor;background:var(--panel-2);color:var(--muted);padding:5px 12px;font:600 11px var(--f-label);letter-spacing:.14em;text-transform:uppercase}
-.legend{display:flex;flex-wrap:wrap;gap:4px 0;margin-top:10px}
-.legend span{flex:1 1 70px;padding:4px 6px;color:var(--z-ink);font:600 11px var(--f-label);letter-spacing:.04em;text-transform:uppercase;text-align:center}
+.zone .zl{font:700 11.5px var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.cor{grid-area:cor;background:#0c1014;color:var(--muted);padding:6px 12px;font:700 10.5px var(--f-label);letter-spacing:.2em;text-transform:uppercase}
+.legend{display:flex;flex-wrap:wrap;gap:4px 0;margin-top:12px}
+.legend span{flex:1 1 70px;padding:4px 6px;color:var(--z-ink);font:700 10.5px var(--f-label);letter-spacing:.04em;text-transform:uppercase;text-align:center}
 
 .rows{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:baseline;margin:0}
-.rows dt{color:var(--ink-2)} .rows dd{margin:0;text-align:right}
-.big{font:500 34px/1 var(--f-data)}
+.rows dt{color:var(--ink-2)} .rows dd{margin:0;text-align:right;color:var(--val)}
+.big{font:500 34px/1 var(--f-data);color:var(--val)}
 .spctl{display:flex;align-items:center;gap:8px;margin:10px 0 12px}
-.spctl button{width:34px;height:34px;border:1px solid var(--line);background:var(--panel-2);font:500 18px var(--f-data)}
+.spctl button{width:34px;height:34px;border:1px solid var(--line);background:var(--panel-2);font:500 18px var(--f-data);border-radius:3px}
 .spctl .num{font-size:18px;min-width:76px;text-align:center}
 
-/* AHU graphic */
-.gscroll{overflow-x:auto}
-.gscroll svg{display:block;width:100%;min-width:760px;height:auto}
-.duct{fill:var(--duct);stroke:var(--duct-line);stroke-width:1.5}
-.blade{stroke:var(--ink);stroke-width:3;stroke-linecap:round}
-.eq{fill:var(--panel);stroke:var(--ink-2);stroke-width:1.5}
-.eqline{fill:none;stroke:var(--ink-2);stroke-width:1.5}
-.lead{stroke:var(--muted);stroke-width:1}
-.dot{fill:var(--accent)}
-.tl{font:600 10.5px var(--f-label);letter-spacing:.08em;fill:var(--muted);text-anchor:middle}
-.tv{font:500 13px var(--f-data);fill:var(--ink);text-anchor:middle}
-.flow{font:600 11px var(--f-label);letter-spacing:.1em;fill:var(--ink-2)}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+/* minis under the AHU graphic */
+.minis{display:grid;grid-template-columns:220px minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:760px){.minis{grid-template-columns:minmax(0,1fr)}}
+.mini{background:var(--canvas);border:1px solid var(--line);padding:10px 12px;min-width:0;text-align:left;display:flex;flex-direction:column;gap:8px}
+button.mini:hover{border-color:var(--accent)}
+.mini-head{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.mini-head b{font:500 13px var(--f-data);color:var(--val)}
+.mini canvas{height:92px}
+.thumb{display:grid;gap:2px;background:#3d4852;border:2px solid #3d4852;height:92px;
+  grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 6px 1fr;
+  grid-template-areas:"t102 t102 t103 t105" "tc tc tc tc" "t101 t104 t104 t106"}
+.thumb div{background:var(--zu);transition:background-color .6s}
+.thumb .tc{grid-area:tc;background:#0c1014}
+
 .field{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
 .field:last-child{border-bottom:0}
-.field input[type=number]{width:76px;padding:4px 6px;border:1px solid var(--line);background:var(--panel-2);font-family:var(--f-data);text-align:right}
-.field select{padding:4px 6px;border:1px solid var(--line);background:var(--panel-2);max-width:170px}
+.field input[type=number]{width:76px;padding:4px 6px;border:1px solid var(--line);background:var(--canvas);color:var(--val);font-family:var(--f-data);text-align:right;border-radius:3px}
+.field select{padding:4px 6px;border:1px solid var(--line);background:var(--canvas);max-width:170px;border-radius:3px}
 .field input[type=range]{width:120px}
-.fault{display:block;width:100%;text-align:left;padding:8px 10px;margin-top:6px;border:1px solid var(--line);background:var(--panel-2)}
+.fault{display:block;width:100%;text-align:left;padding:8px 10px;margin-top:6px;border:1px solid var(--line);background:var(--panel-2);border-radius:3px}
 .fault[aria-pressed="true"]{border-color:var(--crit);box-shadow:inset 4px 0 0 var(--crit)}
 .fault small{display:block;color:var(--ink-2)}
 
 table{border-collapse:collapse;width:100%;font-size:13px}
-th{font:600 11px var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:700 10.5px var(--f-label);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:baseline}
 td.num,th.r{text-align:right}
+td.pv{color:var(--val)}
 .tscroll{overflow-x:auto}
-.sev{font:600 11px var(--f-label);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border:1px solid currentColor;white-space:nowrap}
+.sev{font:700 10.5px var(--f-label);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border:1px solid currentColor;white-space:nowrap;border-radius:2px}
 .sev.crit{color:var(--crit)} .sev.warn{color:var(--warn)} .sev.ok{color:var(--muted)}
-.ack{border:1px solid var(--line);background:var(--panel-2);padding:3px 8px;font-size:12px}
+.ack{border:1px solid var(--line);background:var(--panel-2);padding:3px 8px;font-size:12px;border-radius:3px}
 .empty{padding:26px 8px;color:var(--ink-2);text-align:center}
 
 /* logic */
-.prog{display:flex;align-items:stretch;gap:0;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
-.mb{flex:none;min-width:150px;border:1.5px solid var(--ink-2);background:var(--panel-2)}
-.mb header{font:600 11px var(--f-label);letter-spacing:.1em;text-transform:uppercase;background:var(--ink-2);color:var(--panel);padding:3px 8px}
+.logic{background:var(--canvas);background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:20px 20px}
+.prog{display:flex;align-items:stretch;gap:0;flex-wrap:nowrap;overflow-x:auto;padding:4px 0 6px}
+.mb{flex:none;min-width:150px;border:1px solid #4a5a69;background:var(--panel-2);border-radius:3px;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.mb header{font:700 10.5px var(--f-label);letter-spacing:.12em;text-transform:uppercase;background:linear-gradient(#1f5aa3,#165194);color:#fff;padding:4px 8px}
 .mb .b{padding:7px 8px;display:grid;grid-template-columns:auto auto;gap:3px 10px;font-size:12.5px}
-.mb .b span:nth-child(odd){color:var(--ink-2)}
-.mb .b span:nth-child(even){font-family:var(--f-data);text-align:right;font-variant-numeric:tabular-nums}
-.mb .b input{width:62px;padding:1px 4px;border:1px solid var(--line);background:var(--panel);font:12.5px var(--f-data);text-align:right;justify-self:end}
+.mb .b span:nth-child(odd),.mb .b label{color:var(--ink-2)}
+.mb .b span:nth-child(even){font-family:var(--f-data);text-align:right;font-variant-numeric:tabular-nums;color:var(--val)}
+.mb .b input{width:62px;padding:1px 4px;border:1px solid var(--line);background:var(--canvas);color:var(--val);font:12.5px var(--f-data);text-align:right;justify-self:end}
 .mb .one{grid-column:1/-1;color:var(--ink)!important;font-family:var(--f-ui)!important;text-align:left!important}
-.wire{flex:1 0 64px;align-self:center;border-bottom:2px solid var(--accent);position:relative;text-align:center;font:500 11.5px var(--f-data);padding-bottom:3px;color:var(--ink)}
+.wire{flex:1 0 64px;align-self:center;border-bottom:2px solid var(--accent);position:relative;text-align:center;font:500 11.5px var(--f-data);padding-bottom:3px;color:var(--val)}
 .wire::after{content:"";position:absolute;right:-1px;bottom:-6px;border:5px solid transparent;border-left-color:var(--accent)}
 .outs{display:flex;flex-direction:column;gap:6px;flex:none}
 .meter{height:5px;background:var(--line);grid-column:1/-1}
@@ -145,6 +163,16 @@ td.num,th.r{text-align:right}
 .lg b{font:500 12.5px var(--f-data);color:var(--ink)}
 .lg i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:5px}
 canvas{display:block;width:100%;height:190px;touch-action:pan-y}
+.chartp{background:var(--canvas)}
+
+/* svg text */
+.ct{font:700 10.5px var(--f-label);letter-spacing:.06em;fill:#e3e9ee}
+.cn{font:400 10.5px var(--f-ui);fill:#93a0aa}
+.cv{font:500 11px var(--f-data);fill:var(--val);text-anchor:end}
+.cbox{fill:#0b0e11;fill-opacity:.9;stroke:#3c4853;stroke-width:1}
+.lead{stroke:#6f7c87;stroke-width:1}
+.flowdot{fill:none;stroke-width:5;stroke-linecap:round;stroke-dasharray:1 15}
+.air{font:700 11px var(--f-label);letter-spacing:.14em;fill:#0c1116}
 </style>
 
 </head>
@@ -152,8 +180,8 @@ canvas{display:block;width:100%;height:190px;touch-action:pan-y}
 <div class="wrap">
   <div class="bar">
     <div>
-      <h1>Mesa Tower · Level 1</h1>
-      <div class="sub">AHU-1 serving six VAV zones. Simulated plant, live control loops.</div>
+      <h1>Mesa Tower</h1>
+      <div class="sub">Building Automation System</div>
     </div>
     <div class="spacer"></div>
     <div class="stat"><span class="lbl">Site time</span><span class="num" id="h-time">–</span></div>
@@ -169,195 +197,248 @@ canvas{display:block;width:100%;height:190px;touch-action:pan-y}
   </div>
 
   <div class="tabs" role="tablist" id="tabs">
-    <button role="tab" data-v="floor" aria-selected="true">Floor plan</button>
-    <button role="tab" data-v="ahu" aria-selected="false">AHU-1</button>
+    <button role="tab" data-v="graphics" aria-selected="true">Graphics</button>
     <button role="tab" data-v="logic" aria-selected="false">Logic</button>
     <button role="tab" data-v="trends" aria-selected="false">Trends</button>
     <button role="tab" data-v="alarms" aria-selected="false">Alarms<span class="cnt" id="t-cnt" hidden>0</span></button>
   </div>
 
-  <!-- FLOOR -->
-  <section id="v-floor" class="split">
-    <div class="panel">
-      <h2>Zone temperatures</h2>
-      <div class="plan" id="plan"><div class="cor">Corridor</div></div>
-      <div class="legend" aria-label="Zone color key">
-        <span style="background:var(--z-3)">Cold</span><span style="background:var(--z-2)">Cool</span><span style="background:var(--z-1)">Slightly cool</span>
-        <span style="background:var(--z0)">Ideal</span><span style="background:var(--z1)">Slightly warm</span><span style="background:var(--z2)">Warm</span>
-        <span style="background:var(--z3)">Hot</span><span style="background:var(--zu)">Unoccupied</span>
-      </div>
-    </div>
-    <div class="panel" id="zd">
-      <div class="lbl" id="zd-id">–</div>
-      <h2 id="zd-name" style="margin-top:2px">–</h2>
-      <div class="big" id="zd-t">–</div>
-      <div class="lbl" id="zd-state" style="margin-top:6px">–</div>
-      <div class="lbl" style="margin-top:14px">Occupied setpoint</div>
-      <div class="spctl">
-        <button type="button" id="zd-dn" aria-label="Lower setpoint">−</button>
-        <span class="num" id="zd-sp">–</span>
-        <button type="button" id="zd-up" aria-label="Raise setpoint">+</button>
-      </div>
-      <dl class="rows">
-        <dt>Cooling / heating SP</dt><dd class="num" id="zd-sps">–</dd>
-        <dt>Damper</dt><dd class="num" id="zd-dmp">–</dd>
-        <dt>Airflow</dt><dd class="num" id="zd-cfm">–</dd>
-        <dt>Reheat valve</dt><dd class="num" id="zd-rh">–</dd>
-        <dt>Discharge air</dt><dd class="num" id="zd-dat">–</dd>
-      </dl>
-    </div>
-  </section>
+  <div class="body">
+    <nav class="tree" aria-label="Equipment">
+      <div class="lbl">Geographic</div>
+      <div class="root">Mesa Tower</div>
+      <ul id="tree"></ul>
+    </nav>
 
-  <!-- AHU -->
-  <section id="v-ahu" class="split" hidden>
     <div class="stack">
-      <div class="panel">
-        <h2>AHU-1 · single-duct VAV with economizer</h2>
-        <div class="chips">
-          <span class="pill" id="a-mode"><i></i><span>–</span></span>
-          <span class="pill"><span>Supply airflow&nbsp;</span><span class="num" id="a-cfm">–</span></span>
+      <!-- FLOOR -->
+      <section id="v-floor" class="split">
+        <div class="gfx">
+          <div class="gfx-head"><h2>Level 1 · Zone temperatures</h2></div>
+          <div class="plan" id="plan"><div class="cor">Corridor</div></div>
+          <div class="legend" aria-label="Zone color key">
+            <span style="background:var(--z-3)">Cold</span><span style="background:var(--z-2)">Cool</span><span style="background:var(--z-1)">Slightly cool</span>
+            <span style="background:var(--z0)">Ideal</span><span style="background:var(--z1)">Slightly warm</span><span style="background:var(--z2)">Warm</span>
+            <span style="background:var(--z3)">Hot</span><span style="background:var(--zu)">Unoccupied</span>
+          </div>
         </div>
-        <div class="gscroll">
-        <svg viewBox="0 0 920 385" role="img" aria-label="Air handler schematic with live point values">
-          <path class="duct" d="M30 60H860V130H240V240H860V320H30V240H170V130H30Z"/>
-          <text class="flow" x="42" y="99">◀ EA</text>
-          <text class="flow" x="760" y="99">◀ RA from zones</text>
-          <text class="flow" x="42" y="284">OA ▶</text>
-          <text class="flow" x="778" y="284">SA ▶</text>
-          <g id="d-ea"></g><g id="d-oa"></g><g id="d-ra"></g>
-          <!-- filter -->
-          <rect class="eq" id="g-filt" x="300" y="244" width="22" height="72"/>
-          <polyline class="eqline" points="300,244 322,256 300,268 322,280 300,292 322,304 300,316"/>
-          <!-- coils -->
-          <rect class="eq" x="400" y="246" width="26" height="68"/><rect id="g-hwf" x="400" y="246" width="26" height="68" fill="var(--hot)" fill-opacity="0"/>
-          <line class="eqline" x1="400" y1="314" x2="426" y2="246"/>
-          <rect class="eq" x="480" y="246" width="26" height="68"/><rect id="g-chwf" x="480" y="246" width="26" height="68" fill="var(--cold)" fill-opacity="0"/>
-          <line class="eqline" x1="480" y1="314" x2="506" y2="246"/>
-          <!-- fan -->
-          <circle class="eq" cx="620" cy="280" r="32"/>
-          <g id="fan" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round">
-            <path d="M620 280q9-13 0-26"/><path d="M620 280q9-13 0-26" transform="rotate(60 620 280)"/><path d="M620 280q9-13 0-26" transform="rotate(120 620 280)"/>
-            <path d="M620 280q9-13 0-26" transform="rotate(180 620 280)"/><path d="M620 280q9-13 0-26" transform="rotate(240 620 280)"/><path d="M620 280q9-13 0-26" transform="rotate(300 620 280)"/>
-          </g>
-          <circle cx="620" cy="280" r="4.5" fill="var(--ink)"/>
-          <!-- sensors + leaders -->
-          <g class="lead"><line x1="205" y1="320" x2="205" y2="336"/><line x1="311" y1="320" x2="311" y2="336"/><line x1="413" y1="320" x2="413" y2="336"/><line x1="493" y1="320" x2="493" y2="336"/><line x1="620" y1="320" x2="620" y2="336"/><line x1="730" y1="320" x2="730" y2="336"/><line x1="820" y1="320" x2="820" y2="336"/><line x1="500" y1="60" x2="500" y2="50"/></g>
-          <circle class="dot" cx="205" cy="320" r="4"/><circle class="dot" cx="730" cy="320" r="4"/><circle class="dot" cx="820" cy="320" r="4"/><circle class="dot" cx="500" cy="60" r="4"/>
-          <!-- tags -->
-          <text class="tl" x="46" y="350">OA-T</text><text class="tv" x="46" y="368" id="g-oat">–</text>
-          <text class="tl" x="122" y="350">OA-D</text><text class="tv" x="122" y="368" id="g-oad">–</text>
-          <text class="tl" x="205" y="350">MA-T</text><text class="tv" x="205" y="368" id="g-mat">–</text>
-          <text class="tl" x="311" y="350">FLT-DP</text><text class="tv" x="311" y="368" id="g-fdp">–</text>
-          <text class="tl" x="413" y="350">HW-V</text><text class="tv" x="413" y="368" id="g-hw">–</text>
-          <text class="tl" x="493" y="350">CHW-V</text><text class="tv" x="493" y="368" id="g-chw">–</text>
-          <text class="tl" x="620" y="350">SF-VFD</text><text class="tv" x="620" y="368" id="g-sf">–</text>
-          <text class="tl" x="730" y="350">SA-T</text><text class="tv" x="730" y="368" id="g-sat">–</text>
-          <text class="tl" x="820" y="350">DA-P</text><text class="tv" x="820" y="368" id="g-dsp">–</text>
-          <text class="tl" x="122" y="26">EA-D</text><text class="tv" x="122" y="44" id="g-ead">–</text>
-          <text class="tl" x="500" y="26">RA-T</text><text class="tv" x="500" y="44" id="g-rat">–</text>
-          <text class="tl" x="290" y="178">RA-D</text><text class="tv" x="290" y="196" id="g-rad">–</text>
-        </svg>
+        <div class="panel" id="zd">
+          <div class="lbl" id="zd-id">–</div>
+          <h2 id="zd-name" style="margin-top:2px">–</h2>
+          <div class="big" id="zd-t">–</div>
+          <div class="lbl" id="zd-state" style="margin-top:6px">–</div>
+          <div class="lbl" style="margin-top:14px">Occupied setpoint</div>
+          <div class="spctl">
+            <button type="button" id="zd-dn" aria-label="Lower setpoint">−</button>
+            <span class="num" id="zd-sp">–</span>
+            <button type="button" id="zd-up" aria-label="Raise setpoint">+</button>
+          </div>
+          <dl class="rows">
+            <dt>Cooling / heating SP</dt><dd class="num" id="zd-sps">–</dd>
+            <dt>Damper</dt><dd class="num" id="zd-dmp">–</dd>
+            <dt>Airflow</dt><dd class="num" id="zd-cfm">–</dd>
+            <dt>Reheat valve</dt><dd class="num" id="zd-rh">–</dd>
+            <dt>Discharge air</dt><dd class="num" id="zd-dat">–</dd>
+          </dl>
         </div>
-      </div>
-      <div class="panel">
-        <h2>Point list</h2>
-        <div class="tscroll"><table><thead><tr><th>Object</th><th>Description</th><th>Type</th><th class="r">Present value</th></tr></thead><tbody id="pts"></tbody></table></div>
-      </div>
-    </div>
-    <div class="stack">
-      <div class="panel">
-        <h2>Operator setpoints</h2>
-        <div class="field"><label for="i-satsp">Supply air temp, °F</label><input id="i-satsp" type="number" min="50" max="65" step="0.5" value="55"></div>
-        <div class="field"><label for="i-dspsp">Duct static, in. w.c.</label><input id="i-dspsp" type="number" min="0.5" max="2" step="0.1" value="1.0"></div>
-        <div class="field"><label for="i-occ">Occupancy</label><select id="i-occ"><option value="auto">Schedule 06:00–18:00</option><option value="occ">Force occupied</option><option value="unocc">Force unoccupied</option></select></div>
-        <div class="field"><label for="i-oatauto">Weather follows time of day</label><input id="i-oatauto" type="checkbox" checked></div>
-        <div class="field"><label for="i-oat">Outside air <span class="num" id="i-oatv"></span></label><input id="i-oat" type="range" min="0" max="110" step="1" value="70" disabled></div>
-      </div>
-      <div class="panel">
-        <h2>Inject a fault</h2>
-        <p class="note">Break something and watch the loops and alarms respond.</p>
-        <button type="button" class="fault" id="f-fan" aria-pressed="false">Trip the supply fan<small>VFD commanded on, no status</small></button>
-        <button type="button" class="fault" id="f-chw" aria-pressed="false">Stick the chilled water valve shut<small>Output moves, actuator does not</small></button>
-        <button type="button" class="fault" id="f-filter" aria-pressed="false">Load the filter bank<small>Differential pressure rises</small></button>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- LOGIC -->
-  <section id="v-logic" class="stack" hidden>
-    <div class="panel">
-      <h2>Fan start / stop</h2>
-      <div class="prog">
-        <div class="mb"><header>Schedule</header><div class="b"><span>Window</span><span>06:00–18:00</span><span>Mode</span><span id="l-occm">–</span></div></div>
-        <div class="wire" id="l-w-occ">–</div>
-        <div class="mb"><header>BO · SF-C</header><div class="b"><span>Command</span><span id="l-sfc">–</span></div></div>
-        <div class="wire" id="l-w-sfc">–</div>
-        <div class="mb"><header>BI · SF-S</header><div class="b"><span>Status</span><span id="l-sfs">–</span></div></div>
-        <div class="wire" id="l-w-sfs">–</div>
-        <div class="mb"><header>Alarm</header><div class="b"><span>Cmd ≠ status</span><span>60 s</span><span>State</span><span id="l-sfa">–</span></div></div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>Duct static pressure loop</h2>
-      <div class="prog">
-        <div class="mb"><header>AI · DA-P</header><div class="b"><span>Value</span><span id="l-dsp">–</span></div></div>
-        <div class="wire" id="l-w-dsp">–</div>
-        <div class="mb"><header>PID · reverse acting</header><div class="b">
-          <span>Setpoint</span><span id="l-dspsp">–</span><span>Error</span><span id="l-dspe">–</span>
-          <label for="k-dsp-p">Kp</label><input id="k-dsp-p" type="number" step="0.05" min="0" max="3" value="0.3">
-          <label for="k-dsp-i">Ki /min</label><input id="k-dsp-i" type="number" step="0.05" min="0" max="5" value="0.6">
-          <span>I term</span><span id="l-dspi">–</span></div></div>
-        <div class="wire" id="l-w-sfo">–</div>
-        <div class="mb"><header>AO · SF-VFD</header><div class="b"><span>Output</span><span id="l-sfo">–</span><span>Actual speed</span><span id="l-sfa2">–</span><div class="meter"><i id="m-sf"></i></div></div></div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>Supply air temperature sequence</h2>
-      <div class="prog">
-        <div class="mb"><header>AI · SA-T</header><div class="b"><span>Value</span><span id="l-sat">–</span></div></div>
-        <div class="wire" id="l-w-sat">–</div>
-        <div class="mb"><header>PID · direct acting</header><div class="b">
-          <span>Setpoint</span><span id="l-satsp">–</span><span>Error</span><span id="l-sate">–</span>
-          <label for="k-sat-p">Kp</label><input id="k-sat-p" type="number" step="0.01" min="0" max="1" value="0.04">
-          <label for="k-sat-i">Ki /min</label><input id="k-sat-i" type="number" step="0.01" min="0" max="1" value="0.06">
-          <span>I term</span><span id="l-sati">–</span></div></div>
-        <div class="wire" id="l-w-u">–</div>
-        <div class="mb"><header>Sequencer</header><div class="b"><span>−100…0</span><span>heat</span><span>0…100</span><span id="l-seq1">–</span><span>100…200</span><span id="l-seq2">–</span><span class="one" id="l-stage">–</span></div></div>
-        <div class="wire">stage</div>
-        <div class="outs">
-          <div class="mb"><header>AO · HW-V</header><div class="b"><span>Output</span><span id="l-hw">–</span><div class="meter"><i id="m-hw"></i></div></div></div>
-          <div class="mb"><header>AO · OA-D</header><div class="b"><span>Output</span><span id="l-oa">–</span><div class="meter"><i id="m-oa"></i></div></div></div>
-          <div class="mb"><header>AO · CHW-V</header><div class="b"><span>Output</span><span id="l-chw">–</span><div class="meter"><i id="m-chw"></i></div></div></div>
-        </div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>Economizer enable</h2>
-      <div class="prog">
-        <div class="outs">
-          <div class="mb"><header>AI · OA-T</header><div class="b"><span>Value</span><span id="l-oat">–</span></div></div>
-          <div class="mb"><header>AI · RA-T</header><div class="b"><span>Value</span><span id="l-rat">–</span></div></div>
-        </div>
-        <div class="wire">°F</div>
-        <div class="mb"><header>Compare</header><div class="b"><span>OA-T &lt; 65 °F</span><span id="l-c1">–</span><span>OA-T &lt; RA-T − 2</span><span id="l-c2">–</span><span>Hysteresis</span><span>2 °F</span></div></div>
-        <div class="wire" id="l-w-econ">–</div>
-        <div class="mb"><header>BV · ECON-EN</header><div class="b"><span>State</span><span id="l-econ">–</span></div></div>
-      </div>
-    </div>
-  </section>
+      <!-- AHU -->
+      <section id="v-ahu" class="stack" hidden>
+        <div class="gfx">
+          <div class="gfx-head">
+            <h2>Level 1 · Air Handling Unit 1</h2>
+            <div class="chips">
+              <span class="pill" id="a-mode"><i></i><span>–</span></span>
+              <span class="pill"><span>Supply airflow&nbsp;</span><span class="num" id="a-cfm">–</span></span>
+            </div>
+          </div>
+          <div class="gscroll">
+          <svg id="ahu" viewBox="0 0 1000 505" role="img" aria-label="Cutaway of the air handler with live point values">
+            <defs>
+              <linearGradient id="gRoof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8996a1"/><stop offset="1" stop-color="#5a6670"/></linearGradient>
+              <linearGradient id="gSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4c5761"/><stop offset="1" stop-color="#333c44"/></linearGradient>
+              <linearGradient id="gBack" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b333a"/><stop offset="1" stop-color="#161b1f"/></linearGradient>
+              <linearGradient id="gDuct" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#aab5be"/><stop offset=".5" stop-color="#7c8892"/><stop offset="1" stop-color="#56616a"/></linearGradient>
+              <linearGradient id="gFrame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c3ccd4"/><stop offset="1" stop-color="#77838d"/></linearGradient>
+              <radialGradient id="gFan" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#a9b4bd"/><stop offset="1" stop-color="#454f58"/></radialGradient>
+              <linearGradient id="gBlade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d5dce2"/><stop offset="1" stop-color="#7f8b95"/></linearGradient>
+              <linearGradient id="gHot" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b9573f"/><stop offset="1" stop-color="#6e2a1c"/></linearGradient>
+              <linearGradient id="gCold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4a88c4"/><stop offset="1" stop-color="#1d4672"/></linearGradient>
+              <linearGradient id="gFilt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d9e0cf"/><stop offset="1" stop-color="#8d9a80"/></linearGradient>
+            </defs>
 
-  <!-- TRENDS -->
-  <section id="v-trends" class="stack" hidden>
-    <p class="note">Last 24 hours, logged every 5 minutes. Shaded spans are unoccupied. Hover a chart to read all three at that time. <span class="num" id="tr-at"></span></p>
-    <div id="charts" class="stack"></div>
-  </section>
+            <!-- shadow under the unit -->
+            <ellipse cx="480" cy="392" rx="430" ry="16" fill="#000" opacity=".55"/>
 
-  <!-- ALARMS -->
-  <section id="v-alarms" class="panel" hidden>
-    <h2>Alarm log</h2>
-    <div class="tscroll"><table><thead><tr><th>Raised</th><th>Source</th><th>Message</th><th>Class</th><th>State</th><th></th></tr></thead><tbody id="alm"></tbody></table></div>
-    <div class="empty" id="alm-empty">Nothing in alarm. Open AHU-1 and inject a fault to raise one.</div>
-  </section>
+            <!-- left duct stubs: exhaust (upper), outside air (lower) -->
+            <polygon points="30,130 110,130 146,106 66,106" fill="url(#gRoof)"/><rect x="30" y="130" width="80" height="70" fill="url(#gDuct)"/>
+            <polygon points="30,262 110,262 146,238 66,238" fill="url(#gRoof)"/><rect x="30" y="262" width="80" height="76" fill="url(#gDuct)"/>
+            <text class="air" x="38" y="170">◀ EA</text><text class="air" x="38" y="305">OA ▶</text>
+
+            <!-- cabinet -->
+            <rect x="146" y="76" width="690" height="270" fill="url(#gBack)"/>
+            <polygon points="110,100 146,76 146,346 110,370" fill="#20272d"/>
+            <polygon points="110,370 800,370 836,346 146,346" fill="#343d45"/>
+            <polygon points="110,230 800,230 836,206 146,206" fill="#3a444d"/>
+            <polygon points="176,230 256,230 292,206 212,206" fill="#06080a"/>
+            <polygon points="110,100 800,100 836,76 146,76" fill="url(#gRoof)"/>
+            <polygon points="800,100 836,76 836,346 800,370" fill="url(#gSide)"/>
+
+            <!-- right duct stubs: return (upper), supply (lower) -->
+            <polygon points="800,130 960,130 996,106 836,106" fill="url(#gRoof)"/><rect x="800" y="130" width="160" height="70" fill="url(#gDuct)"/><polygon points="960,130 996,106 996,176 960,200" fill="#1a2025"/>
+            <polygon points="800,262 960,262 996,238 836,238" fill="url(#gRoof)"/><rect x="800" y="262" width="160" height="76" fill="url(#gDuct)"/><polygon points="960,262 996,238 996,314 960,338" fill="#1a2025"/>
+            <text class="air" x="868" y="170" fill="#111">◀ RA</text><text class="air" x="872" y="305">SA ▶</text>
+
+            <g id="flows"></g>
+            <g id="dampers"></g>
+            <g id="slabs"></g>
+
+            <!-- return fan (upper deck) -->
+            <rect x="574" y="122" width="66" height="40" fill="url(#gFan)" stroke="#1b2126"/>
+            <circle cx="640" cy="166" r="44" fill="url(#gFan)" stroke="#1b2126" stroke-width="1.5"/>
+            <circle cx="640" cy="166" r="24" fill="#090b0d" stroke="#2a3238"/>
+            <g id="rfan" stroke="#b9c4cd" stroke-width="2.5" stroke-linecap="round"></g>
+            <circle cx="640" cy="166" r="6" fill="#7b8791"/>
+            <rect x="690" y="204" width="34" height="20" rx="4" fill="url(#gFan)" stroke="#1b2126"/>
+
+            <!-- supply fan (lower deck) -->
+            <rect x="640" y="252" width="74" height="44" fill="url(#gFan)" stroke="#1b2126"/>
+            <circle cx="640" cy="302" r="50" fill="url(#gFan)" stroke="#1b2126" stroke-width="1.5"/>
+            <circle cx="640" cy="302" r="28" fill="#090b0d" stroke="#2a3238"/>
+            <g id="sfan" stroke="#b9c4cd" stroke-width="2.5" stroke-linecap="round"></g>
+            <circle cx="640" cy="302" r="7" fill="#7b8791"/>
+            <rect x="566" y="342" width="38" height="24" rx="4" fill="url(#gFan)" stroke="#1b2126"/>
+
+            <!-- cutaway frame -->
+            <rect x="110" y="370" width="690" height="9" fill="#4d5861"/>
+            <g fill="none" stroke="url(#gFrame)" stroke-width="4">
+              <rect x="110" y="100" width="690" height="270"/>
+              <path d="M110 230H800M270 100V370M400 230V370M560 100V370M730 100V370" stroke-width="3"/>
+            </g>
+
+            <!-- coil piping and valves -->
+            <g stroke-linecap="round">
+              <path d="M438 379V416" stroke="#b9573f" stroke-width="6"/><polygon points="428,392 448,404 448,392 428,404" fill="#d9e0e6" stroke="#20262b"/><rect x="431" y="382" width="14" height="9" fill="#2c343b" stroke="#6f7c87"/>
+              <path d="M508 379V416" stroke="#4a88c4" stroke-width="6"/><polygon points="498,392 518,404 518,392 498,404" fill="#d9e0e6" stroke="#20262b"/><rect x="501" y="382" width="14" height="9" fill="#2c343b" stroke="#6f7c87"/>
+            </g>
+
+            <g id="labels"></g>
+          </svg>
+          </div>
+        </div>
+
+        <div class="minis">
+          <button type="button" class="mini" id="go-floor" aria-label="Open the Level 1 floor plan">
+            <span class="mini-head"><span class="lbl">Level 1 zones</span><b id="th-avg">–</b></span>
+            <span class="thumb" id="thumb"><div class="tc"></div></span>
+          </button>
+          <div class="mini"><div class="mini-head"><span class="lbl">Mixed air temp · 12 h</span><b id="mn-a">–</b></div><canvas id="mini-a" role="img" aria-label="Mixed air temperature, last 12 hours"></canvas></div>
+          <div class="mini"><div class="mini-head"><span class="lbl">Chilled water valve · 12 h</span><b id="mn-b">–</b></div><canvas id="mini-b" role="img" aria-label="Chilled water valve position, last 12 hours"></canvas></div>
+        </div>
+
+        <div class="split">
+          <div class="panel">
+            <h2>Point list</h2>
+            <div class="tscroll"><table><thead><tr><th>Object</th><th>Description</th><th>Type</th><th class="r">Present value</th></tr></thead><tbody id="pts"></tbody></table></div>
+          </div>
+          <div class="stack">
+            <div class="panel">
+              <h2>Operator setpoints</h2>
+              <div class="field"><label for="i-satsp">Supply air temp, °F</label><input id="i-satsp" type="number" min="50" max="65" step="0.5" value="55"></div>
+              <div class="field"><label for="i-dspsp">Duct static, in. w.c.</label><input id="i-dspsp" type="number" min="0.5" max="2" step="0.1" value="1.0"></div>
+              <div class="field"><label for="i-occ">Occupancy</label><select id="i-occ"><option value="auto">Schedule 06:00–18:00</option><option value="occ">Force occupied</option><option value="unocc">Force unoccupied</option></select></div>
+              <div class="field"><label for="i-oatauto">Weather follows time of day</label><input id="i-oatauto" type="checkbox" checked></div>
+              <div class="field"><label for="i-oat">Outside air <span class="num" id="i-oatv"></span></label><input id="i-oat" type="range" min="0" max="110" step="1" value="70" disabled></div>
+            </div>
+            <div class="panel">
+              <h2>Inject a fault</h2>
+              <p class="note">Break something and watch the loops and alarms respond.</p>
+              <button type="button" class="fault" id="f-fan" aria-pressed="false">Trip the supply fan<small>VFD commanded on, no status</small></button>
+              <button type="button" class="fault" id="f-chw" aria-pressed="false">Stick the chilled water valve shut<small>Output moves, actuator does not</small></button>
+              <button type="button" class="fault" id="f-filter" aria-pressed="false">Load the filter bank<small>Differential pressure rises</small></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGIC -->
+      <section id="v-logic" class="stack" hidden>
+        <div class="panel logic">
+          <h2>Fan start / stop</h2>
+          <div class="prog">
+            <div class="mb"><header>Schedule</header><div class="b"><span>Window</span><span>06:00–18:00</span><span>Mode</span><span id="l-occm">–</span></div></div>
+            <div class="wire" id="l-w-occ">–</div>
+            <div class="mb"><header>BO · SF-C</header><div class="b"><span>Command</span><span id="l-sfc">–</span></div></div>
+            <div class="wire" id="l-w-sfc">–</div>
+            <div class="mb"><header>BI · SF-S</header><div class="b"><span>Status</span><span id="l-sfs">–</span></div></div>
+            <div class="wire" id="l-w-sfs">–</div>
+            <div class="mb"><header>Alarm</header><div class="b"><span>Cmd ≠ status</span><span>60 s</span><span>State</span><span id="l-sfa">–</span></div></div>
+          </div>
+        </div>
+        <div class="panel logic">
+          <h2>Duct static pressure loop</h2>
+          <div class="prog">
+            <div class="mb"><header>AI · DA-P</header><div class="b"><span>Value</span><span id="l-dsp">–</span></div></div>
+            <div class="wire" id="l-w-dsp">–</div>
+            <div class="mb"><header>PID · reverse acting</header><div class="b">
+              <span>Setpoint</span><span id="l-dspsp">–</span><span>Error</span><span id="l-dspe">–</span>
+              <label for="k-dsp-p">Kp</label><input id="k-dsp-p" type="number" step="0.05" min="0" max="3" value="0.3">
+              <label for="k-dsp-i">Ki /min</label><input id="k-dsp-i" type="number" step="0.05" min="0" max="5" value="0.6">
+              <span>I term</span><span id="l-dspi">–</span></div></div>
+            <div class="wire" id="l-w-sfo">–</div>
+            <div class="mb"><header>AO · SF-VFD</header><div class="b"><span>Output</span><span id="l-sfo">–</span><span>Actual speed</span><span id="l-sfa2">–</span><div class="meter"><i id="m-sf"></i></div></div></div>
+          </div>
+        </div>
+        <div class="panel logic">
+          <h2>Supply air temperature sequence</h2>
+          <div class="prog">
+            <div class="mb"><header>AI · SA-T</header><div class="b"><span>Value</span><span id="l-sat">–</span></div></div>
+            <div class="wire" id="l-w-sat">–</div>
+            <div class="mb"><header>PID · direct acting</header><div class="b">
+              <span>Setpoint</span><span id="l-satsp">–</span><span>Error</span><span id="l-sate">–</span>
+              <label for="k-sat-p">Kp</label><input id="k-sat-p" type="number" step="0.01" min="0" max="1" value="0.04">
+              <label for="k-sat-i">Ki /min</label><input id="k-sat-i" type="number" step="0.01" min="0" max="1" value="0.06">
+              <span>I term</span><span id="l-sati">–</span></div></div>
+            <div class="wire" id="l-w-u">–</div>
+            <div class="mb"><header>Sequencer</header><div class="b"><span>−100…0</span><span>heat</span><span>0…100</span><span id="l-seq1">–</span><span>100…200</span><span id="l-seq2">–</span><span class="one" id="l-stage">–</span></div></div>
+            <div class="wire">stage</div>
+            <div class="outs">
+              <div class="mb"><header>AO · HW-V</header><div class="b"><span>Output</span><span id="l-hw">–</span><div class="meter"><i id="m-hw"></i></div></div></div>
+              <div class="mb"><header>AO · OA-D</header><div class="b"><span>Output</span><span id="l-oa">–</span><div class="meter"><i id="m-oa"></i></div></div></div>
+              <div class="mb"><header>AO · CHW-V</header><div class="b"><span>Output</span><span id="l-chw">–</span><div class="meter"><i id="m-chw"></i></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel logic">
+          <h2>Economizer enable</h2>
+          <div class="prog">
+            <div class="outs">
+              <div class="mb"><header>AI · OA-T</header><div class="b"><span>Value</span><span id="l-oat">–</span></div></div>
+              <div class="mb"><header>AI · RA-T</header><div class="b"><span>Value</span><span id="l-rat">–</span></div></div>
+            </div>
+            <div class="wire">°F</div>
+            <div class="mb"><header>Compare</header><div class="b"><span>OA-T &lt; 65 °F</span><span id="l-c1">–</span><span>OA-T &lt; RA-T − 2</span><span id="l-c2">–</span><span>Hysteresis</span><span>2 °F</span></div></div>
+            <div class="wire" id="l-w-econ">–</div>
+            <div class="mb"><header>BV · ECON-EN</header><div class="b"><span>State</span><span id="l-econ">–</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRENDS -->
+      <section id="v-trends" class="stack" hidden>
+        <p class="note">Last 24 hours, logged every 5 minutes. Shaded spans are unoccupied. Hover a chart to read all three at that time. <span class="num" id="tr-at"></span></p>
+        <div id="charts" class="stack"></div>
+      </section>
+
+      <!-- ALARMS -->
+      <section id="v-alarms" class="panel" hidden>
+        <h2>Alarm log</h2>
+        <div class="tscroll"><table><thead><tr><th>Raised</th><th>Source</th><th>Message</th><th>Class</th><th>State</th><th></th></tr></thead><tbody id="alm"></tbody></table></div>
+        <div class="empty" id="alm-empty">Nothing in alarm. Open AHU-1 and inject a fault to raise one.</div>
+      </section>
+    </div>
+  </div>
 </div>
 
 <script id="sim">
@@ -488,21 +569,33 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const clock = t => { const m = Math.floor(t); return DAYS[Math.floor(m/1440)%7] + ' ' + String(Math.floor(m/60)%24).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
 const cache = {};
 function set(id, v){ if (cache[id] !== v){ cache[id] = v; $(id).textContent = v; } }
+const NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs, parent, text){ const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
 
-/* ---------- state of the UI ---------- */
-let view = 'floor', sel = 1, speed = 1, hover = null;
-const VIEWS = ['floor','ahu','logic','trends','alarms'];
-function show(v){
-  if (!VIEWS.includes(v)) v = 'floor';
-  view = v;
-  VIEWS.forEach(n => $('v-'+n).hidden = n !== v);
-  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.v === v));
+/* ---------- navigation: tabs pick the view, the tree picks the equipment ---------- */
+let tab = 'graphics', node = 'floor', sel = 1, zoneNode = false, speed = 1, hover = null;
+const current = () => tab === 'graphics' ? node : tab;
+function go(t, n){
+  tab = t; if (n) node = n;
+  const v = current();
+  ['floor','ahu','logic','trends','alarms'].forEach(k => $('v-'+k).hidden = k !== v);
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.v === tab));
   try { history.replaceState(null, '', '#'+v); } catch(e){}
   render(true);
 }
-$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) show(b.dataset.v); });
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(b.dataset.v); });
 $('speed').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; speed = +b.dataset.v;
   document.querySelectorAll('#speed button').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+
+const TREE = [['floor','Level 1','l1'], ['ahu','AHU-1','l2']].concat(S.zones.map((z, i) => ['z'+i, 'VAV-'+z.id+' '+z.name, 'l2']));
+$('tree').innerHTML = TREE.map(t => '<li><button type="button" class="'+t[2]+'" data-n="'+t[0]+'"><i></i>'+t[1]+'</button></li>').join('');
+const treeBtn = {}; document.querySelectorAll('#tree button').forEach(b => treeBtn[b.dataset.n] = b);
+$('tree').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const n = b.dataset.n;
+  if (n[0] === 'z'){ sel = +n.slice(1); zoneNode = true; go('graphics', 'floor'); }
+  else { zoneNode = false; go('graphics', n); }
+});
+$('go-floor').addEventListener('click', () => { zoneNode = false; go('graphics', 'floor'); });
 
 /* ---------- floor plan ---------- */
 const STATE = {'-3':['Cold','--z-3'],'-2':['Cool','--z-2'],'-1':['Slightly cool','--z-1'],'0':['Ideal','--z0'],'1':['Slightly warm','--z1'],'2':['Warm','--z2'],'3':['Hot','--z3']};
@@ -515,20 +608,20 @@ const zel = S.zones.map((z, i) => {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'zone'; b.style.gridArea = 'z'+z.id; b.id = 'zone-'+z.id;
   b.innerHTML = '<span class="zn">'+z.id+' · '+z.name+'</span><span class="zt"></span><span class="zl"></span><span class="zs"></span>';
-  b.addEventListener('click', () => { sel = i; render(true); });
+  b.addEventListener('click', () => { sel = i; zoneNode = true; render(true); });
   $('plan').appendChild(b);
-  return {b, t:b.children[1], l:b.children[2], s:b.children[3]};
+  const th = document.createElement('div'); th.style.gridArea = 't'+z.id; $('thumb').appendChild(th);
+  return {b, t:b.children[1], l:b.children[2], s:b.children[3], th};
 });
 $('zd-up').addEventListener('click', () => { const z = S.zones[sel]; z.sp = clamp(z.sp+.5, 66, 78); render(true); });
 $('zd-dn').addEventListener('click', () => { const z = S.zones[sel]; z.sp = clamp(z.sp-.5, 66, 78); render(true); });
 
 function renderFloor(){
   S.zones.forEach((z, i) => {
-    const e = zel[i], [label, tok] = zstate(z);
+    const e = zel[i], label = zstate(z)[0];
     e.t.textContent = f1(z.T) + '°';
     e.l.textContent = label;
     e.s.textContent = 'SP ' + f1(z.sp) + ' · flow ' + Math.round(z.flow*100) + '%';
-    e.b.style.backgroundColor = 'var('+tok+')';
     e.b.setAttribute('aria-pressed', i === sel);
   });
   const z = S.zones[sel], [c, h] = zoneSps(z, S.occ);
@@ -538,21 +631,81 @@ function renderFloor(){
   set('zd-dat', z.flow > .05 ? deg(S.sat + 35*z.rh) : 'no flow');
 }
 
-/* ---------- AHU graphic ---------- */
-function mkDamper(id, pts, vertical){
-  const g = $(id);
-  return pts.map(([x, y]) => {
-    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    l.setAttribute('class', 'blade');
-    if (vertical){ l.setAttribute('x1', x-10); l.setAttribute('x2', x+10); l.setAttribute('y1', y); l.setAttribute('y2', y); }
-    else { l.setAttribute('x1', x); l.setAttribute('x2', x); l.setAttribute('y1', y-11); l.setAttribute('y2', y+11); }
-    g.appendChild(l); return {l, x, y};
-  });
+/* ---------- AHU cutaway ---------- */
+const DX = 36, DY = -24;                       // oblique depth vector
+const plane = (x, yt, yb) => x+','+yt+' '+(x+DX)+','+(yt+DY)+' '+(x+DX)+','+(yb+DY)+' '+x+','+yb;
+
+// filter and coils: a slab across the airstream, seen from its downstream side
+function slab(x, t, yt, yb, front, side, hatch){
+  const g = svg('g', {}, $('slabs'));
+  svg('polygon', {points: x+','+yt+' '+(x+t)+','+yt+' '+(x+t+DX)+','+(yt+DY)+' '+(x+DX)+','+(yt+DY), fill: front, opacity: .8}, g);
+  svg('rect', {x, y: yt, width: t, height: yb-yt, fill: front}, g);
+  const face = svg('polygon', {points: plane(x+t, yt, yb), fill: side}, g);
+  for (let y = yt+8; y < yb; y += 8) svg('line', {x1: x+t, y1: y, x2: x+t+DX, y2: y+DY, stroke: hatch, 'stroke-width': 1}, g);
+  const glow = svg('polygon', {points: plane(x+t, yt, yb), fill: '#fff', opacity: 0}, g);
+  return {face, glow};
 }
-const dEA = mkDamper('d-ea', [[110,73],[110,95],[110,117]]);
-const dOA = mkDamper('d-oa', [[110,254],[110,280],[110,306]]);
-const dRA = mkDamper('d-ra', [[183,185],[205,185],[227,185]], true);
-const turn = (d, pos) => d.forEach(b => b.l.setAttribute('transform', 'rotate('+(pos*90).toFixed(1)+' '+b.x+' '+b.y+')'));
+const filt = slab(300, 18, 238, 368, '#aeb9a2', 'url(#gFilt)', '#6f7b63');
+const hwc  = slab(430, 16, 238, 368, '#6e2a1c', 'url(#gHot)', '#e0a08f');
+const chwc = slab(500, 16, 238, 368, '#1d4672', 'url(#gCold)', '#a9cdf0');
+hwc.glow.setAttribute('fill', '#ff9a5c'); chwc.glow.setAttribute('fill', '#7cc4ff');
+
+// dampers: blades fatten as they close
+function vDamper(x, yt, yb, n){
+  const g = svg('g', {}, $('dampers'));
+  svg('polygon', {points: plane(x, yt, yb), fill: '#06080a', opacity: .55, stroke: '#9aa7b2', 'stroke-width': 1.5}, g);
+  const H = (yb-yt)/n, blades = [];
+  for (let i = 0; i < n; i++) blades.push({p: svg('polygon', {fill: 'url(#gBlade)', stroke: '#30383f', 'stroke-width': .5}, g), yc: yt + (i+.5)*H});
+  return pos => blades.forEach(b => { const h = 1.5 + (1-pos)*(H/2 - 1.5);
+    b.p.setAttribute('points', x+','+(b.yc-h)+' '+(x+DX)+','+(b.yc+DY-h)+' '+(x+DX)+','+(b.yc+DY+h)+' '+x+','+(b.yc+h)); });
+}
+function hDamper(x0, y, n, pitch){
+  const g = svg('g', {}, $('dampers')), blades = [];
+  for (let i = 0; i < n; i++) blades.push({p: svg('polygon', {fill: 'url(#gBlade)', stroke: '#30383f', 'stroke-width': .5}, g), xc: x0 + (i+.5)*pitch});
+  return pos => blades.forEach(b => { const w = 1.5 + (1-pos)*(pitch/2 - 1.5);
+    b.p.setAttribute('points', (b.xc-w)+','+y+' '+(b.xc+w)+','+y+' '+(b.xc+w+DX)+','+(y+DY)+' '+(b.xc-w+DX)+','+(y+DY)); });
+}
+const setEA = vDamper(150, 106, 228, 5), setOA = vDamper(150, 238, 368, 5), setRA = hDamper(176, 230, 4, 20);
+
+// fan wheels
+function wheel(id, cx, cy, r0, r1){ for (let a = 0; a < 360; a += 30) svg('line', {x1: cx, y1: cy-r0, x2: cx+4, y2: cy-r1, transform: 'rotate('+a+' '+cx+' '+cy+')'}, $(id)); }
+wheel('sfan', 640, 302, 9, 25); wheel('rfan', 640, 166, 8, 21);
+
+// airflow: dots that drift with the fan and take the color of the air they carry
+const FLOWS = [
+  ['M40 300H150', () => S.oat, () => S.oa],
+  ['M186 300H428', () => S.mat, () => 1],
+  ['M556 300H586M700 300H956', () => S.sat, () => 1],
+  ['M956 166H700M586 166H260', () => S.rat, () => 1],
+  ['M186 166H40', () => S.rat, () => S.oa],
+  ['M224 196V282', () => S.rat, () => 1-S.oa],
+].map(f => ({p: svg('path', {d: f[0], class: 'flowdot'}, $('flows')), t: f[1], k: f[2]}));
+function airColor(t){ const k = clamp((t-52)/36, 0, 1), m = (a, b) => Math.round(a + (b-a)*k); return 'rgb('+m(74,255)+','+m(170,138)+','+m(255,61)+')'; }
+
+// callouts
+const run = () => S.speed > .05;
+const LABELS = [
+  {t:'Exhaust Damper', x:10,  y:6, a:[168,150], rows:[['Position', () => pc(S.oa)]]},
+  {t:'Mixing Damper',  x:140, y:6, a:[236,216], rows:[['Position', () => pc(S.fanCmd ? 1-S.oa : 0)]]},
+  {t:'Economizer',     x:270, y:6, rows:[['Mode', () => S.econ ? 'Enabled' : 'Disabled'], ['Min OA', () => pc(S.minOA)]]},
+  {t:'Return Fan',     x:560, y:6, a:[640,128], rows:[['Status', () => run() ? 'On' : 'Off'], ['Speed', () => pc(S.speed)]]},
+  {t:'Return Air',     x:830, y:6, a:[900,140], rows:[['Temp', () => deg(S.rat)]]},
+  {t:'Outside Air',    x:10,  y:432, a:[96,330],  rows:[['Temp', () => deg(S.oat)], ['Damper', () => pc(S.oa)]]},
+  {t:'Mixed Air',      x:140, y:432, a:[236,350], rows:[['Temp', () => deg(S.mat)]]},
+  {t:'Filter',         x:270, y:432, a:[309,374], rows:[['DP', () => S.fdp.toFixed(2)+' in'], ['Status', () => S.fdp > .8 ? 'Dirty' : 'Clean']]},
+  {t:'Heating Coil',   x:400, y:432, a:[438,416], rows:[['HW valve', () => pc(S.htg)]]},
+  {t:'Cooling Coil',   x:530, y:432, a:[508,416], rows:[['CHW valve', () => pc(S.clg)]]},
+  {t:'Supply Fan',     x:660, y:432, a:[660,348], rows:[['Status', () => run() ? 'On' : S.fanCmd ? 'FAULT' : 'Off'], ['Speed', () => pc(S.speed)]]},
+  {t:'Supply Air',     x:800, y:432, a:[890,330], rows:[['Temp', () => deg(S.sat)], ['Setpoint', () => deg(S.satSp)], ['Static', () => S.dsp.toFixed(2)+' in']]},
+];
+LABELS.forEach(L => {
+  const g = $('labels'), W = 120, H = 22 + 14*L.rows.length;
+  if (L.a){ const top = L.y < 200; svg('line', {class: 'lead', x1: L.a[0], y1: L.a[1], x2: L.x + W/2, y2: top ? L.y + H : L.y}, g); svg('circle', {cx: L.a[0], cy: L.a[1], r: 3, fill: '#f4d35e', stroke: '#0b0e11'}, g); }
+  svg('rect', {class: 'cbox', x: L.x, y: L.y, width: W, height: H, rx: 3}, g);
+  svg('text', {class: 'ct', x: L.x+7, y: L.y+14}, g, L.t);
+  L.els = L.rows.map((r, i) => { svg('text', {class: 'cn', x: L.x+7, y: L.y+29+14*i}, g, r[0]); return svg('text', {class: 'cv', x: L.x+W-7, y: L.y+29+14*i}, g, ''); });
+  L.last = [];
+});
 
 function mode(){
   if (!S.fanCmd) return ['Unoccupied, unit off', ''];
@@ -563,8 +716,9 @@ function mode(){
 }
 const POINTS = [
   ['AHU1.SF-C','Supply fan start/stop','BO', () => S.fanCmd ? 'On' : 'Off'],
-  ['AHU1.SF-S','Supply fan status','BI', () => S.speed > .05 ? 'Running' : 'Stopped'],
+  ['AHU1.SF-S','Supply fan status','BI', () => run() ? 'Running' : 'Stopped'],
   ['AHU1.SF-VFD','Supply fan speed','AO', () => pc(S.speed)],
+  ['AHU1.RF-VFD','Return fan speed, tracks supply','AO', () => pc(S.speed)],
   ['AHU1.DA-P','Duct static pressure','AI', () => S.dsp.toFixed(2)+' in. w.c.'],
   ['AHU1.SA-T','Supply air temperature','AI', () => deg(S.sat)],
   ['AHU1.MA-T','Mixed air temperature','AI', () => deg(S.mat)],
@@ -576,23 +730,42 @@ const POINTS = [
   ['AHU1.FLT-DP','Filter differential pressure','AI', () => S.fdp.toFixed(2)+' in. w.c.'],
   ['AHU1.ECON-EN','Economizer enable','BV', () => S.econ ? 'Enabled' : 'Disabled'],
 ];
-$('pts').innerHTML = POINTS.map((p, i) => '<tr><td class="num" style="text-align:left">'+p[0]+'</td><td>'+p[1]+'</td><td>'+p[2]+'</td><td class="num" id="pt'+i+'"></td></tr>').join('');
+$('pts').innerHTML = POINTS.map((p, i) => '<tr><td class="num" style="text-align:left">'+p[0]+'</td><td>'+p[1]+'</td><td>'+p[2]+'</td><td class="num pv" id="pt'+i+'"></td></tr>').join('');
+$('a-mode').innerHTML = '<i></i><span></span>';
 
+function drawMini(id, out, fn, unit, dp){
+  const cv = $(id), L = S.log.slice(-145), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || L.length < 2) return;
+  if (cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  let lo = Infinity, hi = -Infinity; for (const r of L){ const v = fn(r); if (v < lo) lo = v; if (v > hi) hi = v; }
+  if (hi - lo < 4){ const m = (hi+lo)/2; lo = m-2; hi = m+2; }
+  const X = i => 2 + i/(L.length-1)*(w-34), Y = v => h-4 - (v-lo)/(hi-lo)*(h-10);
+  g.strokeStyle = '#1e262d'; g.lineWidth = 1;
+  for (let k = 0; k <= 4; k++){ const y = Math.round(3 + k*(h-7)/4)+.5; g.beginPath(); g.moveTo(0, y); g.lineTo(w-32, y); g.stroke(); }
+  for (let k = 0; k <= 6; k++){ const x = Math.round(2 + k*(w-34)/6)+.5; g.beginPath(); g.moveTo(x, 3); g.lineTo(x, h-4); g.stroke(); }
+  g.fillStyle = '#7d8a94'; g.font = '10px "Roboto Mono", ui-monospace, monospace'; g.textAlign = 'right';
+  g.textBaseline = 'top'; g.fillText(hi.toFixed(0), w-1, 1); g.textBaseline = 'bottom'; g.fillText(lo.toFixed(0), w-1, h-1);
+  g.strokeStyle = '#f4d35e'; g.lineWidth = 1.5; g.lineJoin = 'round'; g.beginPath();
+  L.forEach((r, i) => { const y = Y(fn(r)); i ? g.lineTo(X(i), y) : g.moveTo(X(i), y); }); g.stroke();
+  set(out, fn(L[L.length-1]).toFixed(dp) + unit);
+}
+
+let dash = 0;
 function renderAHU(){
   const [m, cls] = mode();
-  set('a-mode', m); $('a-mode').className = 'pill ' + cls; $('a-mode').lastElementChild.textContent = m;
+  $('a-mode').className = 'pill ' + cls; if (cache.mode !== m){ cache.mode = m; $('a-mode').lastElementChild.textContent = m; }
   set('a-cfm', Math.round(S.flowFrac*9600).toLocaleString()+' cfm');
-  set('g-oat', deg(S.oat)); set('g-oad', pc(S.oa)); set('g-mat', deg(S.mat)); set('g-fdp', S.fdp.toFixed(2)+' in');
-  set('g-hw', pc(S.htg)); set('g-chw', pc(S.clg)); set('g-sf', pc(S.speed)); set('g-sat', deg(S.sat));
-  set('g-dsp', S.dsp.toFixed(2)+' in'); set('g-ead', pc(S.oa)); set('g-rat', deg(S.rat)); set('g-rad', pc(S.fanCmd ? 1-S.oa : 0));
-  turn(dOA, S.oa); turn(dEA, S.oa); turn(dRA, S.fanCmd ? 1-S.oa : 0);
-  $('g-hwf').setAttribute('fill-opacity', (S.htg*.75).toFixed(2));
-  $('g-chwf').setAttribute('fill-opacity', (S.clg*.75).toFixed(2));
-  $('g-filt').style.fill = S.fdp > .8 ? 'var(--warn)' : '';
+  LABELS.forEach(L => L.rows.forEach((r, i) => { const v = r[1](); if (L.last[i] !== v){ L.last[i] = v; L.els[i].textContent = v; } }));
+  setOA(S.oa); setEA(S.oa); setRA(S.fanCmd ? 1-S.oa : 0);
+  hwc.glow.setAttribute('opacity', (S.htg*.45).toFixed(2));
+  chwc.glow.setAttribute('opacity', ((S.faults.chw ? 0 : S.clg)*.45).toFixed(2));
+  filt.face.setAttribute('fill', S.fdp > .8 ? '#8a6a2a' : 'url(#gFilt)');
+  FLOWS.forEach(f => { f.p.setAttribute('stroke', airColor(f.t())); f.p.setAttribute('opacity', (run() ? .25 + .65*clamp(f.k(), 0, 1) : 0).toFixed(2)); });
   POINTS.forEach((p, i) => set('pt'+i, p[3]()));
   set('i-oatv', deg(S.oat));
+  set('th-avg', deg(S.zones.reduce((a, z) => a + z.T, 0)/S.zones.length) + ' avg');
 }
-$('a-mode').innerHTML = '<i></i><span></span>';
 const num = (id, fn) => $(id).addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)) fn(v); });
 num('i-satsp', v => S.satSp = clamp(v, 50, 65));
 num('i-dspsp', v => S.dspSp = clamp(v, .5, 2));
@@ -611,7 +784,7 @@ function renderLogic(){
   const tf = b => b ? 'TRUE' : 'FALSE';
   set('l-occm', S.occMode === 'auto' ? 'Auto' : 'Override'); set('l-w-occ', S.occ ? 'OCC' : 'UNOCC');
   set('l-sfc', S.fanCmd ? 'On' : 'Off'); set('l-w-sfc', S.fanCmd ? 'start' : 'stop');
-  set('l-sfs', S.speed > .05 ? 'Running' : 'Stopped'); set('l-w-sfs', tf(S.speed > .05));
+  set('l-sfs', run() ? 'Running' : 'Stopped'); set('l-w-sfs', tf(run()));
   set('l-sfa', S.alarms.some(a => a.key==='sf' && a.active) ? 'ALARM' : 'Normal');
   set('l-dsp', S.dsp.toFixed(2)+' in'); set('l-w-dsp', S.dsp.toFixed(2)); set('l-dspsp', S.dspSp.toFixed(2)+' in');
   set('l-dspe', (S.dspErr >= 0 ? '+' : '')+S.dspErr.toFixed(2)); set('l-dspi', pc(S.sfI));
@@ -631,7 +804,7 @@ const CHARTS = [
   {id:'c-out', title:'AHU-1 outputs', unit:' %', dp:0, fixed:[0,100], series:[['SF-VFD', r=>r.sf], ['CHW-V', r=>r.clg], ['OA-D', r=>r.oa]]},
   {id:'c-zone', title:'Zone temperatures', unit:' °F', dp:1, series:S.zones.map((z, i) => [z.id+' '+z.name, r=>r.z[i]])},
 ];
-$('charts').innerHTML = CHARTS.map(c => '<div class="panel"><div class="chart-head"><h2>'+c.title+'</h2><div class="lg">' +
+$('charts').innerHTML = CHARTS.map(c => '<div class="panel chartp"><div class="chart-head"><h2>'+c.title+'</h2><div class="lg">' +
   c.series.map((s, i) => '<span><i style="background:var(--s'+(i+1)+')"></i>'+s[0]+' <b id="'+c.id+'-v'+i+'"></b></span>').join('') +
   '</div></div><canvas id="'+c.id+'" role="img" aria-label="'+c.title+', last 24 hours"></canvas></div>').join('');
 const PADL = 40, PADR = 12;
@@ -660,18 +833,15 @@ function drawCharts(){
     else { for (const r of L) for (const s of c.series){ const v = s[1](r); if (v < lo) lo = v; if (v > hi) hi = v; }
       lo = Math.floor((lo-.5)/5)*5; hi = Math.ceil((hi+.5)/5)*5; }
     const Y = v => y1 - (v-lo)/(hi-lo)*(y1-y0);
-    // unoccupied bands
     g.fillStyle = tok('--band');
     for (let i = 0; i < n-1; i++) if (!L[i].occ) g.fillRect(X(i), y0, X(i+1)-X(i)+.5, y1-y0);
-    // grid + axes
-    g.font = '11px "IBM Plex Mono", ui-monospace, monospace'; g.fillStyle = tok('--muted'); g.strokeStyle = tok('--line'); g.lineWidth = 1;
+    g.font = '11px "Roboto Mono", ui-monospace, monospace'; g.fillStyle = tok('--muted'); g.strokeStyle = tok('--line'); g.lineWidth = 1;
     const st = c.fixed ? 25 : (hi-lo) <= 20 ? 5 : (hi-lo) <= 50 ? 10 : 20;
     g.textAlign = 'right'; g.textBaseline = 'middle';
     for (let v = lo; v <= hi + 1e-6; v += st){ const y = Math.round(Y(v))+.5; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.fillText(String(v), x0-6, y); }
     g.textAlign = 'center'; g.textBaseline = 'top';
     const every = w < 520 ? 360 : 180;
     for (let i = 0; i < n; i++){ const m = Math.round(L[i].t); if (m % every === 0 && X(i) > x0+14 && X(i) < x1-14) g.fillText(String(Math.floor(m/60)%24).padStart(2,'0')+':00', X(i), y1+6); }
-    // series
     g.lineWidth = 2; g.lineJoin = 'round';
     c.series.forEach((s, k) => {
       g.strokeStyle = tok('--s'+(k+1)); g.beginPath();
@@ -679,12 +849,12 @@ function drawCharts(){
       g.stroke();
       $(c.id+'-v'+k).textContent = s[1](L[hi_]).toFixed(c.dp) + c.unit;
     });
-    // crosshair, or the live endpoint
     if (hover != null){ g.strokeStyle = tok('--ink-2'); g.lineWidth = 1; const x = Math.round(X(hi_))+.5; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke(); }
-    c.series.forEach((s, k) => { g.fillStyle = tok('--s'+(k+1)); g.strokeStyle = tok('--panel'); g.lineWidth = 2; g.beginPath(); g.arc(X(hi_), Y(s[1](L[hi_])), 4, 0, 7); g.fill(); g.stroke(); });
+    c.series.forEach((s, k) => { g.fillStyle = tok('--s'+(k+1)); g.strokeStyle = tok('--canvas'); g.lineWidth = 2; g.beginPath(); g.arc(X(hi_), Y(s[1](L[hi_])), 4, 0, 7); g.fill(); g.stroke(); });
   }
 }
-window.addEventListener('resize', () => { if (view === 'trends') drawCharts(); });
+function drawMinis(){ drawMini('mini-a', 'mn-a', r => r.mat, ' °F', 1); drawMini('mini-b', 'mn-b', r => r.clg, ' %', 0); }
+window.addEventListener('resize', () => { const v = current(); if (v === 'trends') drawCharts(); if (v === 'ahu') drawMinis(); });
 
 /* ---------- alarms ---------- */
 let almSig = '';
@@ -700,21 +870,28 @@ function renderAlarms(){
 }
 
 /* ---------- frame loop ---------- */
-function renderHeader(){
+function renderChrome(){
   set('h-time', clock(S.t)); set('h-oat', deg(S.oat));
   const o = $('h-occ'); o.className = 'pill' + (S.occ ? ' on' : ''); o.lastElementChild.textContent = S.occ ? 'Occupied' : 'Unoccupied';
   const act = S.alarms.filter(a => a.active).length, un = S.alarms.filter(a => !a.acked).length;
   const p = $('h-alm'); p.className = 'pill' + (act ? ' alm' : ' on'); p.lastElementChild.textContent = act ? act + ' in alarm' : 'No alarms';
   $('t-cnt').hidden = un === 0; $('t-cnt').textContent = un;
+  // zone colors feed the plan, the thumbnail and the tree
+  S.zones.forEach((z, i) => { const c = 'var('+zstate(z)[1]+')'; if (zel[i].c !== c){ zel[i].c = c; zel[i].b.style.backgroundColor = c; zel[i].th.style.backgroundColor = c; treeBtn['z'+i].firstChild.style.background = c; } });
+  treeBtn.ahu.firstChild.style.background = S.faults.fan && S.fanCmd ? 'var(--crit)' : run() ? 'var(--good)' : 'var(--muted)';
+  treeBtn.floor.firstChild.style.background = 'var(--accent)';
+  const cur = tab !== 'graphics' ? '' : node === 'ahu' ? 'ahu' : zoneNode ? 'z'+sel : 'floor';
+  for (const k in treeBtn) treeBtn[k].setAttribute('aria-current', k === cur);
 }
 let lastR = 0, lastC = 0;
 function render(force){
-  renderHeader();
-  if (view === 'floor') renderFloor();
-  else if (view === 'ahu') renderAHU();
-  else if (view === 'logic') renderLogic();
-  else if (view === 'alarms') renderAlarms();
-  else if (view === 'trends' && force) drawCharts();
+  renderChrome();
+  const v = current();
+  if (v === 'floor') renderFloor();
+  else if (v === 'ahu'){ renderAHU(); if (force) drawMinis(); }
+  else if (v === 'logic') renderLogic();
+  else if (v === 'alarms') renderAlarms();
+  else if (v === 'trends' && force) drawCharts();
 }
 const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 let prev = performance.now(), acc = 0, ang = 0;
@@ -723,13 +900,20 @@ function frame(now){
   acc += dt * speed / DT;                       // sim minutes per second -> steps
   let k = Math.min(Math.floor(acc), 1200); acc -= Math.floor(acc);
   while (k-- > 0) step(S);
-  if (view === 'ahu' && !still){ ang = (ang + S.speed*540*dt) % 360; $('fan').setAttribute('transform', 'rotate('+ang.toFixed(1)+' 620 280)'); }
+  const v = current();
+  if (v === 'ahu' && !still){
+    ang = (ang + S.speed*540*dt) % 360;
+    $('sfan').setAttribute('transform', 'rotate('+ang.toFixed(1)+' 640 302)');
+    $('rfan').setAttribute('transform', 'rotate('+(-ang).toFixed(1)+' 640 166)');
+    dash = (dash - S.speed*60*dt) % 16; $('flows').setAttribute('stroke-dashoffset', dash.toFixed(1));
+  }
   if (now - lastR > 200){ lastR = now; render(false); }
-  if (view === 'trends' && now - lastC > 600){ lastC = now; drawCharts(); }
+  if (now - lastC > 600){ lastC = now; if (v === 'trends') drawCharts(); else if (v === 'ahu') drawMinis(); }
   requestAnimationFrame(frame);
 }
-show((location.hash || '').slice(1) || 'floor');
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (view === 'trends') drawCharts(); });
+const h0 = (location.hash || '').slice(1);
+if (h0 === 'ahu' || h0 === 'floor') go('graphics', h0); else if (['logic','trends','alarms'].includes(h0)) go(h0); else go('graphics', 'floor');
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render(true));
 requestAnimationFrame(frame);
 })();
 </script>

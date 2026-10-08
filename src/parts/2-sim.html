@@ -1,0 +1,115 @@
+<script id="sim">
+/* Plant + controller model. No DOM in here. Units: °F, minutes, in. w.c., fractions 0..1. */
+const DT = 5/60;
+const clamp = (x,a,b) => Math.min(b, Math.max(a, x));
+const ZDEF = [
+  {id:'101', name:'Lobby',            load:.16, env:.0015, base:0,   meet:0,   cfm:1800},
+  {id:'102', name:'Open Office West', load:.20, env:.001, base:0,   meet:0,   cfm:2400},
+  {id:'103', name:'Conference A',     load:.08, env:.001, base:0,   meet:.24, cfm:1200},
+  {id:'104', name:'Open Office East', load:.20, env:.001, base:0,   meet:0,   cfm:2400},
+  {id:'105', name:'IDF / Server',     load:.09, env:.004, base:.05, meet:0,   cfm:900},
+  {id:'106', name:'Break Room',       load:.12, env:.001, base:0,   meet:0,   cfm:900},
+];
+const MIN_FLOW = .25, UNOCC_C = 82, UNOCC_H = 62;
+
+function makeSim(){
+  return {
+    t: 10.5*60, oatAuto:true, oatMan:70, oat:70, occMode:'auto', occ:false,
+    satSp:55, dspSp:1.0, minOA:.2, gains:{satP:.04, satI:.06, dspP:.3, dspI:.6},
+    sat:68, mat:72, rat:72, dsp:0, speed:0, sfOut:0, sfI:0, u:0, satI:0, satErr:0, dspErr:0,
+    clg:0, htg:0, oa:0, econ:false, fanCmd:false, fdp:0, flowFrac:0,
+    faults:{fan:false, chw:false, filter:false},
+    zones: ZDEF.map(d => ({...d, T:72.5, sp:72, cI:0, hI:0, dmp:0, rh:0, flow:0})),
+    alarms:[], aid:0, tm:{}, log:[], lastLog:-1e9
+  };
+}
+const weather = t => 70 + 14*Math.sin(2*Math.PI*(((t/60)%24) - 9)/24);
+function zoneSps(z, occ){ return occ ? [z.sp+1, z.sp-1] : [UNOCC_C, UNOCC_H]; }
+function zoneDev(z, occ){ const [c,h] = zoneSps(z, occ); return z.T > c ? z.T-c : z.T < h ? z.T-h : 0; }
+
+function raise(S, key, cond, delay, src, msg, sev){
+  S.tm[key] = cond ? (S.tm[key]||0) + DT : 0;
+  const a = S.alarms.find(a => a.key===key && a.active);
+  if (cond && S.tm[key] >= delay && !a){
+    S.alarms.unshift({id:++S.aid, key, t:S.t, src, msg, sev, active:true, acked:false, rtn:null});
+    if (S.alarms.length > 60) S.alarms.pop();
+  } else if (!cond && a){ a.active = false; a.rtn = S.t; }
+}
+
+function step(S){
+  S.t += DT;
+  const h = (S.t/60) % 24, G = S.gains;
+  S.oat = S.oatAuto ? weather(S.t) : S.oatMan;
+  S.occ = S.occMode==='auto' ? (h>=6 && h<18) : S.occMode==='occ';
+  S.fanCmd = S.occ;
+  const run = S.fanCmd && !S.faults.fan;
+
+  // duct static loop -> fan VFD
+  if (S.fanCmd){
+    S.dspErr = S.dspSp - S.dsp;
+    S.sfI = clamp(S.sfI + G.dspI*S.dspErr*DT, 0, 1);
+    S.sfOut = clamp(G.dspP*S.dspErr + S.sfI, .2, 1);
+  } else { S.dspErr = 0; S.sfI = 0; S.sfOut = 0; }
+  S.speed += ((run ? S.sfOut : 0) - S.speed) * DT/.5;
+  if (S.speed < .002) S.speed = 0;
+  const avgD = S.zones.reduce((a,z) => a+z.dmp, 0) / S.zones.length;
+  S.dsp += (2*S.speed*S.speed/(.4 + 1.2*avgD) - S.dsp) * DT/.3;
+
+  // zones
+  let wsum = 0, tsum = 0, fsum = 0, csum = 0;
+  for (const z of S.zones){
+    const [csp, hsp] = zoneSps(z, S.occ);
+    const ce = z.T - csp, he = hsp - z.T;
+    z.cI = clamp(z.cI + .04*ce*DT, 0, 1);
+    z.hI = clamp(z.hI + .04*he*DT, 0, 1);
+    const c = clamp(.35*ce + z.cI, 0, 1);
+    z.rh = S.occ ? clamp(.35*he + z.hI, 0, 1) : 0;
+    z.dmp = S.occ ? MIN_FLOW + (1-MIN_FLOW)*c : 0;
+    z.flow = z.dmp * Math.min(1.25, Math.sqrt(Math.max(S.dsp,0)/1.0));
+    let q = z.base;
+    if (S.occ){ q += z.load; if (z.meet && ((h>=9&&h<10.5)||(h>=13&&h<15))) q += z.meet; }
+    z.T += (q + z.env*(S.oat - z.T) + .03*z.flow*(S.sat - z.T) + (z.flow>.05 ? .35*z.rh : 0)) * DT;
+    const w = z.flow*z.cfm; wsum += w; tsum += w*z.T; fsum += w; csum += z.cfm;
+  }
+  S.flowFrac = fsum/csum;
+  const ratT = wsum > 1 ? tsum/wsum + .5 : S.zones.reduce((a,z)=>a+z.T,0)/S.zones.length;
+  S.rat += (ratT - S.rat) * DT/2;
+
+  // economizer enable, 2 °F hysteresis
+  if (S.econ){ if (S.oat > 67 || S.oat > S.rat) { S.econ = false; S.satI = Math.max(S.satI-1, 0); } }
+  else if (S.oat < 65 && S.oat < S.rat-2){ S.econ = true; if (S.clg > 0) S.satI += 1; }
+
+  // supply air temp sequence: heat | economizer | chilled water
+  if (S.fanCmd){
+    const uMax = S.econ ? 2 : 1;
+    S.satErr = S.sat - S.satSp;
+    S.satI = clamp(S.satI + G.satI*S.satErr*DT, -1, uMax);
+    S.u = clamp(G.satP*S.satErr + S.satI, -1, uMax);
+    S.htg = clamp(-S.u, 0, 1);
+    if (S.econ){ S.oa = S.minOA + (1-S.minOA)*clamp(S.u,0,1); S.clg = clamp(S.u-1, 0, 1); }
+    else { S.oa = S.minOA; S.clg = clamp(S.u, 0, 1); }
+  } else { S.satErr = 0; S.satI = 0; S.u = 0; S.htg = 0; S.clg = 0; S.oa = 0; }
+  S.mat = S.oa*S.oat + (1-S.oa)*S.rat;
+  if (run && S.speed > .05){
+    const clgEff = S.faults.chw ? 0 : S.clg;
+    S.sat += (S.mat - 30*clgEff + 35*S.htg + 1.5*S.speed - S.sat) * DT/1.0;
+  } else S.sat += (S.rat - S.sat) * DT/20;
+  S.fdp = S.speed > .05 ? (S.faults.filter ? .9 : 0) + .5*S.flowFrac*S.flowFrac + .12 : 0;
+
+  // alarms
+  raise(S, 'sf', S.fanCmd && S.speed < .05, 1, 'AHU1.SF-S', 'Supply fan commanded on, no run status', 'crit');
+  raise(S, 'sat', run && S.sat > S.satSp+5, 10, 'AHU1.SA-T', 'Supply air temperature high', 'crit');
+  raise(S, 'flt', S.fdp > .8, 2, 'AHU1.FLT-DP', 'Filter differential pressure high, change filters', 'warn');
+  for (const z of S.zones){
+    const d = zoneDev(z, S.occ);
+    raise(S, 'zh'+z.id, d > 3, 15, 'VAV-'+z.id+'.ZN-T', z.name+' space temperature high', 'warn');
+    raise(S, 'zl'+z.id, d < -3, 15, 'VAV-'+z.id+'.ZN-T', z.name+' space temperature low', 'warn');
+  }
+
+  if (S.t - S.lastLog >= 5 - 1e-6){
+    S.lastLog = S.t;
+    S.log.push({t:S.t, occ:S.occ, sat:S.sat, mat:S.mat, rat:S.rat, oat:S.oat, sf:S.speed*100, clg:S.clg*100, oa:S.oa*100, z:S.zones.map(z=>z.T)});
+    if (S.log.length > 289) S.log.shift();
+  }
+}
+</script>
